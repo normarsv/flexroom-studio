@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { X } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -51,10 +52,10 @@ export default function RequestClassModal({ locale, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-primary">
-          <X className="w-5 h-5" />
+          <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
         </button>
 
-        <h2 className="text-xl font-bold text-primary mb-1">{t('request_class')}</h2>
+        <h2 className="font-heading font-extrabold text-xl text-foreground mb-1">{t('request_class')}</h2>
         <p className="text-sm text-muted-foreground mb-5">{t('request_subtitle')}</p>
 
         <form onSubmit={handleSubmit} className="space-y-3">

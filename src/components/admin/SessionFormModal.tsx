@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { ClassSession, ClassType, Instructor } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -53,7 +54,7 @@ export default function SessionFormModal({ session, instructors, locale, onClose
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-primary">
-          <X className="w-5 h-5" />
+          <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
         </button>
         <h2 className="text-xl font-bold text-primary mb-5">
           {isNew ? 'Nueva clase' : 'Editar clase'}

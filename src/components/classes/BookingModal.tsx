@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
-import { X, AlertCircle } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark, faCircleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { ClassSession, UserPackage } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -80,7 +81,7 @@ export default function BookingModal({ session, locale, userId, userPackages, on
           onClick={onClose}
           className="absolute top-4 right-4 text-muted-foreground hover:text-primary"
         >
-          <X className="w-5 h-5" />
+          <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
         </button>
 
         {/* Session info */}
@@ -133,7 +134,7 @@ export default function BookingModal({ session, locale, userId, userPackages, on
               </div>
             ) : (
               <div className="mb-6 flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <FontAwesomeIcon icon={faCircleExclamation} className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-amber-800">{t('no_active_package')}</p>
                   <Link href={`/${locale}/packages`} className="text-sm font-medium text-primary underline">

@@ -6,22 +6,25 @@ import { routing } from './i18n/routing'
 const intlMiddleware = createMiddleware(routing)
 
 export async function middleware(request: NextRequest) {
-  // First handle Supabase auth session
-  const authResponse = await updateSession(request)
+  const { pathname } = request.nextUrl
 
-  // If auth redirected, return that
+  // Skip middleware for API routes and auth callback
+  if (pathname.startsWith('/api/') || pathname.startsWith('/auth/')) {
+    return NextResponse.next()
+  }
+
+  // Handle Supabase auth session for non-API routes
+  const authResponse = await updateSession(request)
   if (authResponse.status === 307 || authResponse.status === 302) {
     return authResponse
   }
 
-  // Then handle i18n routing
+  // Handle i18n routing
   return intlMiddleware(request)
 }
 
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    '/',
-    '/(es|en)/:path*',
   ],
 }

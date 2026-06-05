@@ -27,14 +27,12 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <html lang={locale}>
-        <body className="min-h-screen bg-background antialiased flex flex-col">
-          <Navbar locale={locale} />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <Toaster richColors position="top-center" />
-        </body>
-      </html>
+      <div className="flex flex-col min-h-screen">
+        <Navbar locale={locale} />
+        <main className="flex-1">{children}</main>
+        <Footer />
+        <Toaster richColors position="top-center" />
+      </div>
     </NextIntlClientProvider>
   )
 }

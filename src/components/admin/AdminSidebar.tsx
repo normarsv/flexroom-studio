@@ -2,25 +2,27 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  CalendarDays,
-  Package,
-  Users,
-  FileText,
-  Image,
-  UserCircle,
-  BarChart3,
-  Home,
-} from 'lucide-react'
+  faCalendarDays,
+  faBox,
+  faUsers,
+  faFileLines,
+  faImage,
+  faCircleUser,
+  faChartBar,
+  faHouse,
+} from '@fortawesome/free-solid-svg-icons'
+import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
-const navItems = [
-  { href: 'schedule', label: 'Horario', icon: CalendarDays },
-  { href: 'packages', label: 'Membresías', icon: Package },
-  { href: 'instructors', label: 'Instructores', icon: UserCircle },
-  { href: 'content', label: 'Contenido', icon: FileText },
-  { href: 'gallery', label: 'Galería', icon: Image },
-  { href: 'clients', label: 'Clientes', icon: Users },
-  { href: 'metrics', label: 'Métricas', icon: BarChart3 },
+const navItems: { href: string; label: string; icon: IconDefinition }[] = [
+  { href: 'schedule', label: 'Horario', icon: faCalendarDays },
+  { href: 'packages', label: 'Membresías', icon: faBox },
+  { href: 'instructors', label: 'Instructores', icon: faCircleUser },
+  { href: 'content', label: 'Contenido', icon: faFileLines },
+  { href: 'gallery', label: 'Galería', icon: faImage },
+  { href: 'clients', label: 'Clientes', icon: faUsers },
+  { href: 'metrics', label: 'Métricas', icon: faChartBar },
 ]
 
 export default function AdminSidebar({ locale }: { locale: string }) {
@@ -37,7 +39,6 @@ export default function AdminSidebar({ locale }: { locale: string }) {
         {navItems.map((item) => {
           const href = `/${locale}/admin/${item.href}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
-          const Icon = item.icon
 
           return (
             <Link
@@ -45,11 +46,11 @@ export default function AdminSidebar({ locale }: { locale: string }) {
               href={href}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-primary hover:bg-secondary'
+                  ? 'bg-[#F4EF71] text-[#1E1E1E]'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" />
+              <FontAwesomeIcon icon={item.icon} className="w-4 h-4 shrink-0" />
               {item.label}
             </Link>
           )
@@ -59,9 +60,9 @@ export default function AdminSidebar({ locale }: { locale: string }) {
       <div className="p-3 border-t border-border">
         <Link
           href={`/${locale}`}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-primary hover:bg-secondary"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary"
         >
-          <Home className="w-4 h-4" />
+          <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
           Ver sitio
         </Link>
       </div>

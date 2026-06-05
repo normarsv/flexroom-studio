@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPlus, faPencil, faTrash, faUpload } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Instructor, ClassType } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -101,7 +102,7 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">Instructores</h1>
         <Button size="sm" onClick={openNew} className="bg-primary text-primary-foreground">
-          <Plus className="w-4 h-4 mr-1" />
+          <FontAwesomeIcon icon={faPlus} className="w-4 h-4 mr-1" />
           Nuevo instructor
         </Button>
       </div>
@@ -129,8 +130,8 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
               </div>
             </div>
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm" onClick={() => openEdit(instructor)}><Pencil className="w-3.5 h-3.5" /></Button>
-              <Button variant="ghost" size="sm" onClick={() => handleDelete(instructor.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => openEdit(instructor)}><FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => handleDelete(instructor.id)} className="text-destructive hover:text-destructive"><FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" /></Button>
             </div>
           </div>
         ))}
@@ -150,7 +151,7 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
                     <Image src={form.photo_url} alt="foto" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-primary/40">
-                      <Upload className="w-5 h-5" />
+                      <FontAwesomeIcon icon={faUpload} className="w-5 h-5" />
                     </div>
                   )}
                 </div>

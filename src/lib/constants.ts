@@ -9,15 +9,15 @@ export const CLASS_TYPE_LABELS: Record<ClassType, { es: string; en: string }> = 
 }
 
 export const CLASS_TYPE_COLORS: Record<ClassType, string> = {
-  funcional: 'bg-blue-100 text-blue-800 border-blue-200',
-  barre: 'bg-rose-100 text-rose-800 border-rose-200',
-  pilates_reformer: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  pilates_mat: 'bg-purple-100 text-purple-800 border-purple-200',
-  reformer_restaurativo: 'bg-teal-100 text-teal-800 border-teal-200',
+  funcional: 'bg-[#F4EF71]/30 text-[#1E1E1E] border-[#F4EF71]/50',
+  barre: 'bg-[#868686]/15 text-[#1E1E1E] border-[#868686]/30',
+  pilates_reformer: 'bg-[#F4EF71]/50 text-[#1E1E1E] border-[#F4EF71]/70',
+  pilates_mat: 'bg-[#C8C8C8]/40 text-[#1E1E1E] border-[#C8C8C8]/60',
+  reformer_restaurativo: 'bg-[#868686]/20 text-[#1E1E1E] border-[#868686]/40',
 }
 
 export const BRAND = {
-  name: 'Flex Room',
+  name: 'flexroom.',
   tagline_es: 'Tu segundo hogar',
   tagline_en: 'Your second home',
   address: 'Crescencio Rosas 54, Barrio de San Diego, San Cristóbal de las Casas, Chiapas',

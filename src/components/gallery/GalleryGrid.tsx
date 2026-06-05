@@ -3,7 +3,8 @@
 import { useTranslations } from 'next-intl'
 import Image from 'next/image'
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import { GalleryImage } from '@/types'
 
 interface Props {
@@ -53,7 +54,7 @@ export default function GalleryGrid({ images, locale }: Props) {
             className="absolute top-4 right-4 text-white hover:text-white/70"
             onClick={() => setLightbox(null)}
           >
-            <X className="w-8 h-8" />
+            <FontAwesomeIcon icon={faXmark} className="w-8 h-8" />
           </button>
           <div className="relative max-w-3xl max-h-[80vh] w-full h-full">
             <Image

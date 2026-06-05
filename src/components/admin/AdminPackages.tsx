@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPlus, faPencil, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Package, ClassType } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -104,7 +105,7 @@ export default function AdminPackages({ packages: initial, locale }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">Membresías</h1>
         <Button size="sm" onClick={openNew} className="bg-primary text-primary-foreground">
-          <Plus className="w-4 h-4 mr-1" />
+          <FontAwesomeIcon icon={faPlus} className="w-4 h-4 mr-1" />
           Nueva membresía
         </Button>
       </div>
@@ -135,8 +136,8 @@ export default function AdminPackages({ packages: initial, locale }: Props) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(pkg)}><Pencil className="w-3.5 h-3.5" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(pkg)} className="text-destructive hover:text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(pkg)}><FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(pkg)} className="text-destructive hover:text-destructive"><FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" /></Button>
                   </td>
                 </tr>
               ))}

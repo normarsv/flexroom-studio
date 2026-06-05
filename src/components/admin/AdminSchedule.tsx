@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Plus, Pencil, X, RotateCcw } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPlus, faPencil, faXmark, faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClassSession, Instructor, RecurringTemplate } from '@/types'
@@ -60,11 +61,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
         <h1 className="text-2xl font-bold text-primary">Horario</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={generateFromTemplates} disabled={generatingWeeks}>
-            <RotateCcw className="w-4 h-4 mr-1" />
+            <FontAwesomeIcon icon={faRotateLeft} className="w-4 h-4 mr-1" />
             {generatingWeeks ? 'Generando...' : 'Generar desde plantillas'}
           </Button>
           <Button size="sm" onClick={() => setEditingSession('new')} className="bg-primary text-primary-foreground">
-            <Plus className="w-4 h-4 mr-1" />
+            <FontAwesomeIcon icon={faPlus} className="w-4 h-4 mr-1" />
             Nueva clase
           </Button>
         </div>
@@ -113,11 +114,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                       )}
                       <div className="ml-auto flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setEditingSession(session)}>
-                          <Pencil className="w-3.5 h-3.5" />
+                          <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
                         </Button>
                         {session.status !== 'cancelled' && (
                           <Button variant="ghost" size="sm" onClick={() => handleCancel(session)} className="text-destructive hover:text-destructive">
-                            <X className="w-3.5 h-3.5" />
+                            <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
                           </Button>
                         )}
                       </div>

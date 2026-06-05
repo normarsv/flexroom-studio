@@ -9,7 +9,7 @@ interface Props {
 
 export default function CoachCard({ instructor, locale }: Props) {
   return (
-    <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* Photo */}
       <div className="relative h-64 bg-secondary">
         {instructor.photo_url ? (
@@ -20,9 +20,9 @@ export default function CoachCard({ instructor, locale }: Props) {
             className="object-cover object-top"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-3xl font-bold text-primary">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#F4EF71]/30 to-[#C8C8C8]/40">
+            <div className="w-20 h-20 rounded-full bg-[#1E1E1E]/10 flex items-center justify-center">
+              <span className="font-heading font-black text-3xl text-[#1E1E1E]/60">
                 {instructor.name.charAt(0)}
               </span>
             </div>
@@ -32,12 +32,12 @@ export default function CoachCard({ instructor, locale }: Props) {
 
       {/* Info */}
       <div className="p-5">
-        <h3 className="text-xl font-bold text-primary">{instructor.name}</h3>
+        <h3 className="font-heading font-extrabold text-xl text-foreground">{instructor.name}</h3>
 
         {instructor.specialties?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2 mb-3">
             {instructor.specialties.map((type: string) => (
-              <span key={type} className="text-xs bg-secondary text-primary px-2 py-0.5 rounded-full font-medium">
+              <span key={type} className="text-xs bg-[#F4EF71] text-[#1E1E1E] px-2 py-0.5 rounded-full font-semibold">
                 {CLASS_TYPE_LABELS[type as keyof typeof CLASS_TYPE_LABELS]?.[locale === 'es' ? 'es' : 'en'] || type}
               </span>
             ))}

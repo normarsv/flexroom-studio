@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Upload, Trash2 } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { GalleryImage } from '@/types'
 import { createClient } from '@/lib/supabase/client'
@@ -63,7 +64,7 @@ export default function AdminGallery({ images: initial, locale }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-primary">Galería</h1>
         <label className={`cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-          <Upload className="w-4 h-4" />
+          <FontAwesomeIcon icon={faUpload} className="w-4 h-4" />
           {uploading ? 'Subiendo...' : 'Subir fotos'}
           <input type="file" accept="image/*" multiple className="hidden" onChange={handleUpload} disabled={uploading} />
         </label>
@@ -85,7 +86,7 @@ export default function AdminGallery({ images: initial, locale }: Props) {
                   onClick={() => handleDelete(img.id)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
                 </Button>
               </div>
             </div>

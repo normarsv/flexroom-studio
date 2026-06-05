@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, parseISO, isFuture } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
-import { CalendarDays, Package, AlertCircle } from 'lucide-react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCalendarDays, faBox, faCircleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Booking, UserPackage } from '@/types'
@@ -104,7 +105,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, loca
             tab === 'bookings' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
           }`}
         >
-          <CalendarDays className="w-4 h-4" />
+          <FontAwesomeIcon icon={faCalendarDays} className="w-4 h-4" />
           {t('my_bookings')}
         </button>
         <button
@@ -113,7 +114,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, loca
             tab === 'packages' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
           }`}
         >
-          <Package className="w-4 h-4" />
+          <FontAwesomeIcon icon={faBox} className="w-4 h-4" />
           {t('my_packages')}
         </button>
       </div>

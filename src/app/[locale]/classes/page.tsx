@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import ClassSchedule from '@/components/classes/ClassSchedule'
-import { useTranslations } from 'next-intl'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ClassesPage({
   params,
