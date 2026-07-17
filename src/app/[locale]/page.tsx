@@ -1,21 +1,39 @@
 import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBolt, faLeaf, faSpa, faLocationDot, faArrowRight } from '@fortawesome/free-solid-svg-icons'
+import { createClient } from '@/lib/supabase/server'
+import { HomepageContent } from '@/types'
 
-export default function HomePage({ params }: { params: Promise<{ locale: string }> }) {
-  return <HomeContent />
+export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
+  const supabase = await createClient()
+  const { data: homepage } = await supabase.from('homepage_content').select('*').single()
+  const t = await getTranslations({ locale, namespace: 'home' })
+
+  return <HomeContent locale={locale} homepage={homepage} t={t} />
 }
 
-function HomeContent() {
-  const t = useTranslations('home')
-
-  const disciplines = [
-    { num: '01', icon: faBolt, title: t('funcional_title'), desc: t('funcional_desc') },
-    { num: '02', icon: faLeaf, title: t('reformer_title'), desc: t('reformer_desc') },
-    { num: '03', icon: faSpa, title: t('barre_title'), desc: t('barre_desc') },
-  ]
+function HomeContent({
+  locale,
+  homepage,
+  t,
+}: {
+  locale: string
+  homepage: HomepageContent | null
+  t: any
+}) {
+  const heroSubtitle =
+    (locale === 'es' ? homepage?.hero_subtitle_es : homepage?.hero_subtitle_en) ||
+    t('hero_subtitle')
+  const aboutText =
+    (locale === 'es' ? homepage?.about_text_es : homepage?.about_text_en) ||
+    t('about_text')
+  const heroImageUrl = homepage?.hero_image_url || null
+  const aboutImageUrl = homepage?.about_image_url || null
 
   return (
     <div className="overflow-x-hidden">
@@ -58,59 +76,70 @@ function HomeContent() {
         </div>
 
         {/* Hero content */}
-        <div className="relative z-10 text-center max-w-3xl mx-auto">
+        <div className={`relative z-10 text-center max-w-5xl mx-auto w-full ${heroImageUrl ? 'flex flex-col lg:flex-row items-center gap-12 text-left' : ''}`}>
 
-          {/* Location pill */}
-          <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-10 bg-background/60 backdrop-blur-sm">
-            <FontAwesomeIcon icon={faLocationDot} className="w-3 h-3 text-[#F4EF71]" />
-            San Cristóbal de las Casas, Chiapas
+          <div className={heroImageUrl ? 'flex-1' : 'max-w-3xl mx-auto'}>
+            {/* Location pill */}
+            <div className={`inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-10 bg-background/60 backdrop-blur-sm ${heroImageUrl ? '' : 'mx-auto'}`}>
+              <FontAwesomeIcon icon={faLocationDot} className="w-3 h-3 text-[#F4EF71]" />
+              San Cristóbal de las Casas, Chiapas
+            </div>
+
+            {/* Logo / main headline */}
+            <h1
+              className="font-heading font-black lowercase leading-[0.9] tracking-tight text-foreground mb-4"
+              style={{ fontSize: 'clamp(3.5rem, 13vw, 8.5rem)' }}
+            >
+              flexroom.
+            </h1>
+
+            {/* Sub-tagline */}
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-muted-foreground mb-8">
+              Fit Social Hub
+            </p>
+
+            {/* Description */}
+            <p className={`text-base md:text-lg text-muted-foreground leading-relaxed mb-10 ${heroImageUrl ? 'max-w-lg' : 'max-w-md mx-auto'}`}>
+              {heroSubtitle}
+            </p>
+
+            {/* CTAs */}
+            <div className={`flex flex-col sm:flex-row items-center gap-3 ${heroImageUrl ? '' : 'justify-center'}`}>
+              <Link href="./classes">
+                <Button
+                  size="lg"
+                  className="rounded-full bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 font-semibold px-8 gap-2"
+                >
+                  {t('hero_cta')}
+                  <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+                </Button>
+              </Link>
+              <Link href="./packages">
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary px-8"
+                >
+                  {t('hero_cta_secondary')}
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          {/* Logo / main headline */}
-          <h1
-            className="font-heading font-black lowercase leading-[0.9] tracking-tight text-foreground mb-4"
-            style={{ fontSize: 'clamp(3.5rem, 13vw, 8.5rem)' }}
-          >
-            flexroom.
-          </h1>
-
-          {/* Sub-tagline */}
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-muted-foreground mb-8">
-            Fit Social Hub
-          </p>
-
-          {/* Description */}
-          <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto mb-10">
-            {t('hero_subtitle')}
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="./classes">
-              <Button
-                size="lg"
-                className="rounded-full bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 font-semibold px-8 gap-2"
-              >
-                {t('hero_cta')}
-                <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
-              </Button>
-            </Link>
-            <Link href="./packages">
-              <Button
-                size="lg"
-                variant="ghost"
-                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary px-8"
-              >
-                {t('hero_cta_secondary')}
-              </Button>
-            </Link>
-          </div>
+          {/* Hero image — shown only when set from admin */}
+          {heroImageUrl && (
+            <div className="relative w-full max-w-sm lg:max-w-md shrink-0 aspect-square rounded-3xl overflow-hidden">
+              <Image src={heroImageUrl} alt="Flexroom Studio" fill className="object-cover" />
+            </div>
+          )}
         </div>
 
         {/* Scroll line */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" aria-hidden>
-          <div className="w-px h-14 bg-gradient-to-b from-transparent via-border to-transparent" />
-        </div>
+        {!heroImageUrl && (
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" aria-hidden>
+            <div className="w-px h-14 bg-gradient-to-b from-transparent via-border to-transparent" />
+          </div>
+        )}
       </section>
 
       {/* ── DISCIPLINES ──────────────────────────────────────── */}
@@ -243,13 +272,33 @@ function HomeContent() {
           </svg>
         </div>
 
-        <div className="relative z-10 max-w-2xl mx-auto text-center">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-6">
-            {t('about_title')}
-          </p>
-          <p className="text-xl md:text-2xl text-foreground leading-relaxed font-light">
-            {t('about_text')}
-          </p>
+        <div className="relative z-10 max-w-5xl mx-auto">
+          {aboutImageUrl ? (
+            /* Two-column layout when image is set */
+            <div className="flex flex-col lg:flex-row items-center gap-12">
+              <div className="relative w-full max-w-xs lg:max-w-sm shrink-0 aspect-[4/5] rounded-3xl overflow-hidden">
+                <Image src={aboutImageUrl} alt="Sobre flexroom" fill className="object-cover" />
+              </div>
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-6">
+                  {t('about_title')}
+                </p>
+                <p className="text-xl md:text-2xl text-foreground leading-relaxed font-light">
+                  {aboutText}
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Centered layout when no image */
+            <div className="text-center max-w-2xl mx-auto">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-6">
+                {t('about_title')}
+              </p>
+              <p className="text-xl md:text-2xl text-foreground leading-relaxed font-light">
+                {aboutText}
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

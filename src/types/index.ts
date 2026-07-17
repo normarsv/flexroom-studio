@@ -115,6 +115,21 @@ export interface CancellationPolicy {
   updated_at: string
 }
 
+export interface HomepageContent {
+  id: string
+  hero_title_es: string
+  hero_title_en: string
+  hero_subtitle_es: string
+  hero_subtitle_en: string
+  hero_image_url: string | null
+  about_title_es: string
+  about_title_en: string
+  about_text_es: string
+  about_text_en: string
+  about_image_url: string | null
+  updated_at: string
+}
+
 export interface Profile {
   id: string
   email: string

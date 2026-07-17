@@ -9,10 +9,10 @@ export default async function AdminContentPage({
   const { locale } = await params
   const supabase = await createClient()
 
-  const { data: policy } = await supabase
-    .from('cancellation_policy')
-    .select('*')
-    .single()
+  const [{ data: policy }, { data: homepage }] = await Promise.all([
+    supabase.from('cancellation_policy').select('*').single(),
+    supabase.from('homepage_content').select('*').single(),
+  ])
 
-  return <AdminContent policy={policy} locale={locale} />
+  return <AdminContent policy={policy} homepage={homepage} locale={locale} />
 }
