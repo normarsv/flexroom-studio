@@ -4,10 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
+import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faClock, faUsers, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faClock, faUsers, faChevronRight, faCircleCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
-import { ClassSession, UserPackage } from '@/types'
+import { ClassSession, ClassType, UserPackage } from '@/types'
 import { CLASS_TYPE_LABELS, CLASS_TYPE_COLORS } from '@/lib/constants'
 import BookingModal from './BookingModal'
 import RequestClassModal from './RequestClassModal'
@@ -17,13 +18,18 @@ interface Props {
   locale: string
   userId: string | null
   userPackages: UserPackage[]
+  bookedSessionIds: string[]
+  bookingSuccess: boolean
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages }: Props) {
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, bookingSuccess }: Props) {
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
+  const router = useRouter()
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null)
   const [showRequest, setShowRequest] = useState(false)
+  const [filterType, setFilterType] = useState<ClassType | 'all'>('all')
+  const [showSuccess, setShowSuccess] = useState(bookingSuccess)
   const stripRef = useRef<HTMLDivElement>(null)
 
   // Group sessions by date
@@ -47,7 +53,10 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages }
     active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [selectedDate])
 
-  const daySessions = sessionsByDate[selectedDate] ?? []
+  const allDaySessions = sessionsByDate[selectedDate] ?? []
+  const daySessions = filterType === 'all'
+    ? allDaySessions
+    : allDaySessions.filter((s) => s.class_type === filterType)
 
   // Formatted heading for the selected date
   const selectedDateObj = selectedDate ? parseISO(selectedDate) : null
@@ -64,6 +73,32 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages }
         <h1 className="font-heading font-extrabold text-3xl text-foreground">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
       </div>
+
+      {/* ── BOOKING SUCCESS BANNER ────────────────────────── */}
+      {showSuccess && (
+        <div className="mb-6 flex items-start gap-3 p-4 bg-[#F4EF71]/30 border border-[#F4EF71] rounded-2xl">
+          <FontAwesomeIcon icon={faCircleCheck} className="w-5 h-5 text-[#1E1E1E] shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-[#1E1E1E] text-sm">
+              {locale === 'es' ? '¡Reserva confirmada!' : 'Booking confirmed!'}
+            </p>
+            <p className="text-xs text-[#1E1E1E]/70 mt-0.5">
+              {locale === 'es'
+                ? 'Tu clase ha sido reservada exitosamente. '
+                : 'Your class has been successfully booked. '}
+              <button
+                onClick={() => router.push(`/${locale}/account`)}
+                className="font-medium underline"
+              >
+                {locale === 'es' ? 'Ver mis clases' : 'View my bookings'}
+              </button>
+            </p>
+          </div>
+          <button onClick={() => { setShowSuccess(false); router.replace(`/${locale}/classes`) }} className="text-[#1E1E1E]/50 hover:text-[#1E1E1E]">
+            <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ── DATE PICKER STRIP ─────────────────────────────── */}
       <div
@@ -111,6 +146,33 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages }
         })}
       </div>
 
+      {/* ── CLASS TYPE FILTER ─────────────────────────────── */}
+      <div className="flex gap-2 flex-wrap mb-5">
+        <button
+          onClick={() => setFilterType('all')}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
+            ${filterType === 'all'
+              ? 'bg-[#1E1E1E] border-[#1E1E1E] text-white'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+            }`}
+        >
+          {locale === 'es' ? 'Todas' : 'All'}
+        </button>
+        {(Object.keys(CLASS_TYPE_LABELS) as ClassType[]).map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(type)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
+              ${filterType === type
+                ? 'bg-[#1E1E1E] border-[#1E1E1E] text-white'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+              }`}
+          >
+            {locale === 'es' ? CLASS_TYPE_LABELS[type].es : CLASS_TYPE_LABELS[type].en}
+          </button>
+        ))}
+      </div>
+
       {/* ── DAY HEADING + SESSION COUNT ───────────────────── */}
       {selectedDate && (
         <div className="flex items-baseline justify-between mb-4 border-b border-border pb-3">
@@ -137,18 +199,26 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages }
           const isFull = spotsLeft <= 0
           const classLabel = CLASS_TYPE_LABELS[session.class_type]
           const colorClass = CLASS_TYPE_COLORS[session.class_type]
+          const sessionDateTime = new Date(`${session.date}T${session.start_time}`)
+          const isPast = sessionDateTime < new Date()
+          const isBooked = bookedSessionIds.includes(session.id)
 
           return (
             <div
               key={session.id}
               className={`flex items-center gap-4 p-4 rounded-2xl border bg-card
                 transition-all duration-200 hover:shadow-md hover:-translate-y-px
-                ${isFull ? 'opacity-50' : 'border-border'}`}
+                ${isFull || isPast ? 'opacity-50' : 'border-border'}`}
             >
               {/* Time block */}
               <div className="text-center min-w-[56px] shrink-0">
                 <p className="font-heading font-bold text-base text-foreground leading-none">
-                  {session.start_time.slice(0, 5)}
+                  {(() => {
+                    const [h, m] = session.start_time.split(':').map(Number)
+                    const ampm = h >= 12 ? 'pm' : 'am'
+                    const h12 = h % 12 || 12
+                    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+                  })()}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mt-1">
                   <FontAwesomeIcon icon={faClock} className="w-2.5 h-2.5" />
@@ -186,15 +256,26 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages }
               </div>
 
               {/* Book button */}
-              <Button
-                size="sm"
-                disabled={isFull}
-                onClick={() => setSelectedSession(session)}
-                className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-30 gap-1.5"
-              >
-                {t('book')}
-                <FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" />
-              </Button>
+              {isBooked ? (
+                <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4EF71]/40 border border-[#F4EF71]">
+                  <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5 text-[#1E1E1E]" />
+                  <span className="text-xs font-semibold text-[#1E1E1E]">
+                    {locale === 'es' ? 'Reservada' : 'Booked'}
+                  </span>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  disabled={isFull || isPast}
+                  onClick={() => !isPast && setSelectedSession(session)}
+                  className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-30 gap-1.5"
+                >
+                  {isPast
+                    ? (locale === 'es' ? 'Terminada' : 'Ended')
+                    : <>{t('book')}<FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" /></>
+                  }
+                </Button>
+              )}
             </div>
           )
         })}

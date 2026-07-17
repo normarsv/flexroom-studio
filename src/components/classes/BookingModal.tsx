@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark, faCircleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { ClassSession, UserPackage } from '@/types'
-import { CLASS_TYPE_LABELS } from '@/lib/constants'
+import { CLASS_TYPE_LABELS, SINGLE_SESSION_PRICES_MXN } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -41,8 +41,25 @@ export default function BookingModal({ session, locale, userId, userPackages, on
     return up.package.allowed_class_types.includes(session.class_type)
   })
 
-  const canBookAsUser = userId && compatiblePackages.length > 0
-  const canBookAsSingleSession = !userId // guests only book individual sessions
+  const [singleLoading, setSingleLoading] = useState(false)
+
+  async function handleBuySingle() {
+    setSingleLoading(true)
+    try {
+      const res = await fetch('/api/bookings/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classSessionId: session.id, locale }),
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+      else toast.error('Error al procesar el pago')
+    } catch {
+      toast.error('Error al procesar el pago')
+    } finally {
+      setSingleLoading(false)
+    }
+  }
 
   async function handleBook() {
     setLoading(true)
@@ -52,7 +69,7 @@ export default function BookingModal({ session, locale, userId, userPackages, on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: session.id,
-          userPackageId: selectedPackage,
+          userPackageId: userId ? selectedPackage : null,
           guestName: userId ? undefined : guestName,
           guestEmail: userId ? undefined : guestEmail,
         }),
@@ -133,14 +150,30 @@ export default function BookingModal({ session, locale, userId, userPackages, on
                 <p className="text-xs text-muted-foreground mt-2">{t('session_deducted')}</p>
               </div>
             ) : (
-              <div className="mb-6 flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <FontAwesomeIcon icon={faCircleExclamation} className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-amber-800">{t('no_active_package')}</p>
-                  <Link href={`/${locale}/packages`} className="text-sm font-medium text-primary underline">
-                    {t('buy_package')}
+              <div className="mb-6 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {locale === 'es'
+                    ? 'No tienes una membresía activa para esta clase.'
+                    : "You don't have an active membership for this class."}
+                </p>
+                <Button
+                  onClick={handleBuySingle}
+                  disabled={singleLoading}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {singleLoading
+                    ? (locale === 'es' ? 'Redirigiendo...' : 'Redirecting...')
+                    : locale === 'es'
+                      ? `Pagar clase individual — $${SINGLE_SESSION_PRICES_MXN[session.class_type]} MXN`
+                      : `Pay single class — $${SINGLE_SESSION_PRICES_MXN[session.class_type]} MXN`
+                  }
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  {locale === 'es' ? '¿Quieres clases ilimitadas? ' : 'Want unlimited classes? '}
+                  <Link href={`/${locale}/packages`} className="font-medium text-primary underline">
+                    {locale === 'es' ? 'Ver membresías' : 'View memberships'}
                   </Link>
-                </div>
+                </p>
               </div>
             )}
           </>
@@ -179,18 +212,17 @@ export default function BookingModal({ session, locale, userId, userPackages, on
         {/* Actions */}
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">
-            Cancelar
+            {locale === 'es' ? 'Cancelar' : 'Cancel'}
           </Button>
-          <Button
-            onClick={handleBook}
-            disabled={
-              loading ||
-              (userId ? !selectedPackage : !guestName || !guestEmail)
-            }
-            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            {loading ? 'Reservando...' : t('book')}
-          </Button>
+          {(!userId || compatiblePackages.length > 0) && (
+            <Button
+              onClick={handleBook}
+              disabled={loading || (userId ? !selectedPackage : !guestName || !guestEmail)}
+              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {loading ? (locale === 'es' ? 'Reservando...' : 'Booking...') : t('book')}
+            </Button>
+          )}
         </div>
       </div>
     </div>

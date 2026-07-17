@@ -5,10 +5,13 @@ export const dynamic = 'force-dynamic'
 
 export default async function ClassesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>
+  searchParams: Promise<{ booking?: string }>
 }) {
   const { locale } = await params
+  const { booking } = await searchParams
   const supabase = await createClient()
 
   const today = new Date()
@@ -30,14 +33,24 @@ export default async function ClassesPage({
   const { data: { user } } = await supabase.auth.getUser()
 
   let userPackages = null
+  let bookedSessionIds: string[] = []
+
   if (user) {
-    const { data } = await supabase
-      .from('user_packages')
-      .select('*, package:packages(*)')
-      .eq('user_id', user.id)
-      .gt('expires_at', new Date().toISOString())
-      .gt('sessions_remaining', 0)
-    userPackages = data
+    const [packagesRes, bookingsRes] = await Promise.all([
+      supabase
+        .from('user_packages')
+        .select('*, package:packages(*)')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .gt('sessions_remaining', 0),
+      supabase
+        .from('bookings')
+        .select('session_id')
+        .eq('user_id', user.id)
+        .neq('status', 'cancelled'),
+    ])
+    userPackages = packagesRes.data
+    bookedSessionIds = (bookingsRes.data || []).map((b) => b.session_id)
   }
 
   return (
@@ -46,6 +59,8 @@ export default async function ClassesPage({
       locale={locale}
       userId={user?.id || null}
       userPackages={userPackages || []}
+      bookedSessionIds={bookedSessionIds}
+      bookingSuccess={booking === 'success'}
     />
   )
 }

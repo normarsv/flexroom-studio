@@ -20,27 +20,50 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const { packageId, userId } = session.metadata!
+    const { packageId, userId, classSessionId } = session.metadata!
 
     const supabase = await createClient()
 
-    const { data: pkg } = await supabase
-      .from('packages')
-      .select('*')
-      .eq('id', packageId)
-      .single()
+    if (classSessionId) {
+      // Single-session booking paid via Stripe
+      const { data: classSession } = await supabase
+        .from('class_sessions')
+        .select('spots_booked')
+        .eq('id', classSessionId)
+        .single()
 
-    if (pkg) {
-      const expiresAt = new Date()
-      expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
+      if (classSession) {
+        await supabase.from('bookings').insert({
+          user_id: userId,
+          session_id: classSessionId,
+          user_package_id: null,
+          status: 'confirmed',
+        })
 
-      await supabase.from('user_packages').insert({
-        user_id: userId,
-        package_id: packageId,
-        sessions_remaining: pkg.session_count, // null = unlimited
-        expires_at: expiresAt.toISOString(),
-        stripe_payment_intent_id: session.payment_intent as string,
-      })
+        await supabase
+          .from('class_sessions')
+          .update({ spots_booked: classSession.spots_booked + 1 })
+          .eq('id', classSessionId)
+      }
+    } else if (packageId) {
+      // Package purchase
+      const { data: pkg } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', packageId)
+        .single()
+
+      if (pkg) {
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + pkg.validity_days)
+
+        await supabase.from('user_packages').insert({
+          user_id: userId,
+          package_id: packageId,
+          sessions_remaining: pkg.session_count,
+          expires_at: expiresAt.toISOString(),
+        })
+      }
     }
   }
 

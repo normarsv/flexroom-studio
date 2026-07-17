@@ -16,6 +16,14 @@ export const CLASS_TYPE_COLORS: Record<ClassType, string> = {
   reformer_restaurativo: 'bg-[#868686]/20 text-[#1E1E1E] border-[#868686]/40',
 }
 
+export const SINGLE_SESSION_PRICES_MXN: Record<string, number> = {
+  funcional: 150,
+  barre: 180,
+  pilates_reformer: 250,
+  pilates_mat: 150,
+  reformer_restaurativo: 250,
+}
+
 export const BRAND = {
   name: 'flexroom.',
   tagline_es: 'Tu segundo hogar',

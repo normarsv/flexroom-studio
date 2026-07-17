@@ -37,33 +37,6 @@ export async function POST(request: NextRequest) {
 
   // Logged-in user booking
   if (user) {
-    // Verify package ownership and compatibility
-    const { data: userPackage } = await supabase
-      .from('user_packages')
-      .select('*, package:packages(*)')
-      .eq('id', userPackageId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (!userPackage) {
-      return NextResponse.json({ error: 'Membresía no válida' }, { status: 400 })
-    }
-
-    if (new Date(userPackage.expires_at) < new Date()) {
-      return NextResponse.json({ error: 'Tu membresía ha vencido' }, { status: 400 })
-    }
-
-    if (userPackage.sessions_remaining !== null && userPackage.sessions_remaining <= 0) {
-      return NextResponse.json({ error: 'No tienes sesiones disponibles' }, { status: 400 })
-    }
-
-    // Check package class type compatibility
-    if (userPackage.package?.allowed_class_types) {
-      if (!userPackage.package.allowed_class_types.includes(session.class_type)) {
-        return NextResponse.json({ error: 'Tu membresía no incluye este tipo de clase' }, { status: 400 })
-      }
-    }
-
     // Check if already booked
     const { data: existing } = await supabase
       .from('bookings')
@@ -77,13 +50,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ya tienes una reserva para esta clase' }, { status: 400 })
     }
 
-    // Create booking + deduct session
+    let userPackage = null
+
+    if (userPackageId) {
+      // Verify package ownership and compatibility
+      const { data: pkg } = await supabase
+        .from('user_packages')
+        .select('*, package:packages(*)')
+        .eq('id', userPackageId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!pkg) {
+        return NextResponse.json({ error: 'Membresía no válida' }, { status: 400 })
+      }
+      if (new Date(pkg.expires_at) < new Date()) {
+        return NextResponse.json({ error: 'Tu membresía ha vencido' }, { status: 400 })
+      }
+      if (pkg.sessions_remaining !== null && pkg.sessions_remaining <= 0) {
+        return NextResponse.json({ error: 'No tienes sesiones disponibles' }, { status: 400 })
+      }
+      if (pkg.package?.allowed_class_types && !pkg.package.allowed_class_types.includes(session.class_type)) {
+        return NextResponse.json({ error: 'Tu membresía no incluye este tipo de clase' }, { status: 400 })
+      }
+      userPackage = pkg
+    }
+
+    // Create booking
     const { data: booking, error } = await supabase
       .from('bookings')
       .insert({
         user_id: user.id,
         session_id: sessionId,
-        user_package_id: userPackageId,
+        user_package_id: userPackageId || null,
         status: 'confirmed',
       })
       .select()
@@ -93,8 +92,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
     }
 
-    // Deduct session if not unlimited
-    if (userPackage.sessions_remaining !== null) {
+    // Deduct session if using a package
+    if (userPackage && userPackage.sessions_remaining !== null) {
       await supabase
         .from('user_packages')
         .update({ sessions_remaining: userPackage.sessions_remaining - 1 })
