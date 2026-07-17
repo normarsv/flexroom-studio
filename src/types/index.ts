@@ -136,5 +136,28 @@ export interface Profile {
   full_name: string | null
   avatar_url: string | null
   is_admin: boolean
+  credit_sessions: number
+  created_at: string
+}
+
+export interface StudioSettings {
+  id: number
+  cancellation_hours_limit: number
+}
+
+export interface Coupon {
+  id: string
+  code: string
+  description: string | null
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  usage_limit: number | null
+  usage_count: number
+  per_user_limit: number
+  applies_to: 'packages' | 'classes' | 'both'
+  allowed_class_types: string[] | null
+  first_time_only: boolean
+  is_active: boolean
+  expires_at: string | null
   created_at: string
 }

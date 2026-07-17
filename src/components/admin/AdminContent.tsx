@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { CancellationPolicy, HomepageContent } from '@/types'
+import { CancellationPolicy, HomepageContent, StudioSettings } from '@/types'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
@@ -12,14 +12,38 @@ import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
 interface Props {
   policy: CancellationPolicy | null
   homepage: HomepageContent | null
+  settings: StudioSettings | null
   locale: string
 }
 
-export default function AdminContent({ policy, homepage, locale }: Props) {
+type Tab = 'homepage' | 'cancellation_settings'
+
+export default function AdminContent({ policy, homepage, settings, locale }: Props) {
+  const [tab, setTab] = useState<Tab>('homepage')
+
   // Cancellation policy
   const [contentEs, setContentEs] = useState(policy?.content_es || '')
   const [contentEn, setContentEn] = useState(policy?.content_en || '')
   const [policyLoading, setPolicyLoading] = useState(false)
+
+  // Studio settings
+  const [cancellationHours, setCancellationHours] = useState(settings?.cancellation_hours_limit ?? 12)
+  const [settingsLoading, setSettingsLoading] = useState(false)
+
+  async function handleSaveSettings() {
+    setSettingsLoading(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancellation_hours_limit: cancellationHours }),
+      })
+      if (res.ok) toast.success('Configuración guardada')
+      else toast.error('Error al guardar')
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
 
   // Homepage text
   const [heroTitleEs, setHeroTitleEs] = useState(homepage?.hero_title_es || '')
@@ -103,10 +127,29 @@ export default function AdminContent({ policy, homepage, locale }: Props) {
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-primary">Contenido del sitio</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-primary">Configuración</h1>
+
+      {/* ── TABS ──────────────────────────────────────────── */}
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+        {([
+          { key: 'homepage', label: 'Página de inicio' },
+          { key: 'cancellation_settings', label: 'Cancelaciones' },
+        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              tab === key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* ── HOMEPAGE CONTENT ──────────────────────────────── */}
+      {tab === 'homepage' && <>
       <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-6">
         <div>
           <h2 className="text-lg font-semibold text-primary">Página de inicio</h2>
@@ -298,8 +341,41 @@ export default function AdminContent({ policy, homepage, locale }: Props) {
         </Button>
       </div>
 
+      </>}
+
+      {/* ── CANCELLATION SETTINGS ─────────────────────────── */}
+      {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-primary mb-1">Configuración de cancelaciones</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Define cuántas horas antes de la clase puede cancelarse con crédito. Cancelaciones después de ese límite no reciben crédito.
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={72}
+              value={cancellationHours}
+              onChange={(e) => setCancellationHours(Number(e.target.value))}
+              className="w-20 px-3 py-2 rounded-lg border border-border text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <span className="text-sm text-muted-foreground">horas antes de la clase</span>
+          </div>
+          <Button
+            onClick={handleSaveSettings}
+            disabled={settingsLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {settingsLoading ? 'Guardando...' : 'Guardar'}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Actualmente: si el usuario cancela con <strong>{cancellationHours}h</strong> o más de anticipación, recibe crédito para otra clase. Si cancela después, pierde la clase y el pago.
+        </p>
+      </div>}
+
       {/* ── CANCELLATION POLICY ───────────────────────────── */}
-      <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+      {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">
         <h2 className="text-lg font-semibold text-primary mb-1">Política de Cancelación</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Este texto aparecerá cuando los usuarios quieran conocer la política de cancelación.
@@ -335,7 +411,7 @@ export default function AdminContent({ policy, homepage, locale }: Props) {
         >
           {policyLoading ? 'Guardando...' : 'Guardar política'}
         </Button>
-      </div>
+      </div>}
     </div>
   )
 }

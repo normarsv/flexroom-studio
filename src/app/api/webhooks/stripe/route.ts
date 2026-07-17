@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const { packageId, userId, classSessionId } = session.metadata!
+    const { packageId, userId, classSessionId, couponId } = session.metadata!
 
     const supabase = await createClient()
 
@@ -63,6 +63,28 @@ export async function POST(request: NextRequest) {
           sessions_remaining: pkg.session_count,
           expires_at: expiresAt.toISOString(),
         })
+      }
+    }
+
+    // Record coupon use and increment usage_count
+    if (couponId) {
+      await supabase.from('coupon_uses').insert({
+        coupon_id: couponId,
+        user_id: userId || null,
+        guest_email: null,
+      })
+
+      const { data: couponRow } = await supabase
+        .from('coupons')
+        .select('usage_count')
+        .eq('id', couponId)
+        .single()
+
+      if (couponRow) {
+        await supabase
+          .from('coupons')
+          .update({ usage_count: couponRow.usage_count + 1 })
+          .eq('id', couponId)
       }
     }
   }

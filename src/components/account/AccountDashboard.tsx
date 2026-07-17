@@ -16,10 +16,11 @@ interface Props {
   bookings: (Booking & { session?: any })[]
   userPackages: UserPackage[]
   profile: { full_name: string | null; email: string; avatar_url: string | null } | null
+  creditSessions: number
   locale: string
 }
 
-export default function AccountDashboard({ bookings, userPackages, profile, locale }: Props) {
+export default function AccountDashboard({ bookings, userPackages, profile, creditSessions, locale }: Props) {
   const t = useTranslations('account')
   const tCommon = useTranslations('common')
   const dateLocale = locale === 'es' ? es : enUS
@@ -40,11 +41,19 @@ export default function AccountDashboard({ bookings, userPackages, profile, loca
     setCancellingId(bookingId)
     try {
       const res = await fetch(`/api/bookings/${bookingId}/cancel`, { method: 'POST' })
+      const data = await res.json()
       if (res.ok) {
-        toast.success(t('cancel_success'))
+        if (data.creditGranted) {
+          toast.success(locale === 'es'
+            ? '¡Reserva cancelada! Se añadió un crédito a tu cuenta para usarlo en otra clase.'
+            : 'Booking cancelled! A credit was added to your account for another class.')
+        } else {
+          toast.success(locale === 'es'
+            ? 'Reserva cancelada. La cancelación fue dentro del período límite, no se generó crédito.'
+            : `Booking cancelled. Cancellation was within the ${data.cancellationHoursLimit}h limit — no credit issued.`)
+        }
         window.location.reload()
       } else {
-        const data = await res.json()
         toast.error(data.error || 'Error al cancelar')
       }
     } finally {
@@ -96,6 +105,23 @@ export default function AccountDashboard({ bookings, userPackages, profile, loca
           </p>
         )}
       </div>
+
+      {/* Credits */}
+      {creditSessions > 0 && (
+        <div className="mb-6 flex items-center gap-3 p-4 bg-[#F4EF71]/30 border border-[#F4EF71] rounded-xl">
+          <span className="text-2xl font-black text-[#1E1E1E]">{creditSessions}</span>
+          <div>
+            <p className="font-semibold text-sm text-[#1E1E1E]">
+              {locale === 'es' ? 'Crédito(s) disponible(s)' : 'Credit(s) available'}
+            </p>
+            <p className="text-xs text-[#1E1E1E]/70">
+              {locale === 'es'
+                ? 'Úsalos al reservar tu próxima clase.'
+                : 'Use them when booking your next class.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">

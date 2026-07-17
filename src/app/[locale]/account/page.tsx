@@ -30,7 +30,7 @@ export default async function AccountPage({
       .order('purchased_at', { ascending: false }),
     supabase
       .from('profiles')
-      .select('full_name, email, avatar_url')
+      .select('full_name, email, avatar_url, credit_sessions')
       .eq('id', user.id)
       .single(),
   ])
@@ -40,6 +40,7 @@ export default async function AccountPage({
       bookings={bookingsRes.data || []}
       userPackages={packagesRes.data || []}
       profile={profileRes.data}
+      creditSessions={profileRes.data?.credit_sessions ?? 0}
       locale={locale}
     />
   )

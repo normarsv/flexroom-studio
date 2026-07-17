@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { packageId, locale } = await request.json()
+  const { packageId, locale, couponCode } = await request.json()
 
   const { data: pkg } = await supabase
     .from('packages')
@@ -33,6 +33,37 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
+  // Apply coupon discount if provided
+  let finalPrice: number = pkg.price_mxn
+  let appliedCouponId: string | undefined
+
+  if (couponCode) {
+    const validateRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/coupons/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: couponCode, context: 'packages', userId: user.id }),
+    })
+    const validateData = await validateRes.json()
+
+    if (validateData.valid) {
+      const { discount_type, discount_value, id } = validateData.coupon
+      if (discount_type === 'percentage') {
+        finalPrice = Math.round(pkg.price_mxn * (1 - discount_value / 100))
+      } else {
+        finalPrice = Math.max(0, pkg.price_mxn - discount_value)
+      }
+      appliedCouponId = id
+    }
+  }
+
+  const metadata: Record<string, string> = {
+    packageId,
+    userId: user.id,
+  }
+  if (appliedCouponId) {
+    metadata.couponId = appliedCouponId
+  }
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -43,7 +74,7 @@ export async function POST(request: NextRequest) {
             name: pkg.name_es,
             description: pkg.description_es,
           },
-          unit_amount: pkg.price_mxn * 100,
+          unit_amount: finalPrice * 100,
         },
         quantity: 1,
       },
@@ -52,10 +83,7 @@ export async function POST(request: NextRequest) {
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/account?success=1`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/packages`,
     customer_email: profile?.email,
-    metadata: {
-      packageId,
-      userId: user.id,
-    },
+    metadata,
   })
 
   return NextResponse.json({ url: session.url })

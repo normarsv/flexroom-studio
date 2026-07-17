@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faClock } from '@fortawesome/free-solid-svg-icons'
+import { faClock, faTag, faChevronDown } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Package } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
@@ -16,18 +16,26 @@ interface Props {
   userId: string | null
 }
 
+interface AppliedCoupon {
+  id: string
+  code: string
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  description: string | null
+}
+
 export default function PackagesList({ packages, locale, userId }: Props) {
   const t = useTranslations('packages')
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  async function handleBuy(pkg: Package) {
+  async function handleBuy(pkg: Package, couponCode?: string) {
     if (!userId) return
     setLoadingId(pkg.id)
     try {
       const res = await fetch('/api/packages/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packageId: pkg.id, locale }),
+        body: JSON.stringify({ packageId: pkg.id, locale, couponCode }),
       })
       const data = await res.json()
       if (data.url) {
@@ -52,6 +60,51 @@ export default function PackagesList({ packages, locale, userId }: Props) {
     const desc = locale === 'es' ? pkg.description_es : pkg.description_en
     const isPremium = pkg.session_count === null
 
+    const [showCoupon, setShowCoupon] = useState(false)
+    const [couponInput, setCouponInput] = useState('')
+    const [couponLoading, setCouponLoading] = useState(false)
+    const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+    const [couponError, setCouponError] = useState<string | null>(null)
+
+    function computeDiscountedPrice(): number {
+      if (!appliedCoupon) return pkg.price_mxn
+      if (appliedCoupon.discount_type === 'percentage') {
+        return Math.round(pkg.price_mxn * (1 - appliedCoupon.discount_value / 100))
+      }
+      return Math.max(0, pkg.price_mxn - appliedCoupon.discount_value)
+    }
+
+    async function handleApplyCoupon() {
+      if (!couponInput.trim()) return
+      setCouponLoading(true)
+      setCouponError(null)
+      setAppliedCoupon(null)
+      try {
+        const res = await fetch('/api/coupons/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: couponInput.trim(),
+            context: 'packages',
+            userId,
+          }),
+        })
+        const data = await res.json()
+        if (data.valid) {
+          setAppliedCoupon(data.coupon)
+          toast.success('¡Cupón aplicado!')
+        } else {
+          setCouponError(data.error || 'Cupón no válido')
+        }
+      } catch {
+        setCouponError('Error al validar el cupón')
+      } finally {
+        setCouponLoading(false)
+      }
+    }
+
+    const discountedPrice = computeDiscountedPrice()
+
     return (
       <div className={`bg-card rounded-2xl border shadow-sm p-6 flex flex-col ${isPremium ? 'border-[#F4EF71] ring-2 ring-[#F4EF71]/30' : 'border-border'}`}>
         {isPremium && (
@@ -60,10 +113,23 @@ export default function PackagesList({ packages, locale, userId }: Props) {
           </span>
         )}
         <h3 className="font-heading font-bold text-foreground text-lg leading-tight mb-1">{name}</h3>
-        <p className="text-3xl font-extrabold text-foreground mt-2 mb-1">
-          ${pkg.price_mxn.toLocaleString('es-MX')}
-          <span className="text-sm font-normal text-muted-foreground ml-1">MXN</span>
-        </p>
+
+        {appliedCoupon ? (
+          <div className="mt-2 mb-1">
+            <p className="text-3xl font-extrabold text-foreground">
+              ${discountedPrice.toLocaleString('es-MX')}
+              <span className="text-sm font-normal text-muted-foreground ml-1">MXN</span>
+            </p>
+            <p className="text-sm text-muted-foreground line-through">
+              ${pkg.price_mxn.toLocaleString('es-MX')} MXN
+            </p>
+          </div>
+        ) : (
+          <p className="text-3xl font-extrabold text-foreground mt-2 mb-1">
+            ${pkg.price_mxn.toLocaleString('es-MX')}
+            <span className="text-sm font-normal text-muted-foreground ml-1">MXN</span>
+          </p>
+        )}
 
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
           <FontAwesomeIcon icon={faClock} className="w-3 h-3" />
@@ -86,13 +152,73 @@ export default function PackagesList({ packages, locale, userId }: Props) {
         )}
 
         {userId ? (
-          <Button
-            onClick={() => handleBuy(pkg)}
-            disabled={loadingId === pkg.id}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-auto"
-          >
-            {loadingId === pkg.id ? 'Procesando...' : t('buy')}
-          </Button>
+          <div className="mt-auto space-y-2">
+            <Button
+              onClick={() => handleBuy(pkg, appliedCoupon?.code)}
+              disabled={loadingId === pkg.id}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {loadingId === pkg.id ? 'Procesando...' : t('buy')}
+            </Button>
+
+            {/* Coupon section */}
+            <button
+              onClick={() => setShowCoupon((v) => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
+            >
+              <FontAwesomeIcon icon={faTag} className="w-3 h-3" />
+              ¿Tienes un cupón?
+              <FontAwesomeIcon
+                icon={faChevronDown}
+                className={`w-3 h-3 transition-transform ${showCoupon ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {showCoupon && (
+              <div className="space-y-2">
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between bg-[#F4EF71]/20 border border-[#F4EF71] rounded-lg px-3 py-2">
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{appliedCoupon.code}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {appliedCoupon.discount_type === 'percentage'
+                          ? `${appliedCoupon.discount_value}% de descuento`
+                          : `$${appliedCoupon.discount_value} MXN de descuento`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setAppliedCoupon(null); setCouponInput('') }}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      placeholder="CÓDIGO"
+                      className="flex-1 px-3 py-1.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                    />
+                    <Button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      variant="outline"
+                      className="text-sm shrink-0"
+                    >
+                      {couponLoading ? '...' : 'Aplicar'}
+                    </Button>
+                  </div>
+                )}
+                {couponError && (
+                  <p className="text-xs text-destructive">{couponError}</p>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <Link href={`/${locale}/login`}>
             <Button variant="outline" className="w-full mt-auto">

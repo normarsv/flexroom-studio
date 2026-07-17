@@ -5,7 +5,7 @@ import { sendBookingConfirmation } from '@/lib/email'
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
-  const { sessionId, userPackageId, guestName, guestEmail } = body
+  const { sessionId, userPackageId, useCredit, guestName, guestEmail } = body
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -48,6 +48,36 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       return NextResponse.json({ error: 'Ya tienes una reserva para esta clase' }, { status: 400 })
+    }
+
+    // Credit booking
+    if (useCredit) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('credit_sessions')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile || profile.credit_sessions <= 0) {
+        return NextResponse.json({ error: 'No tienes créditos disponibles' }, { status: 400 })
+      }
+
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .insert({ user_id: user.id, session_id: sessionId, user_package_id: null, status: 'confirmed' })
+        .select().single()
+
+      if (error) return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
+
+      await Promise.all([
+        supabase.from('profiles').update({ credit_sessions: profile.credit_sessions - 1 }).eq('id', user.id),
+        supabase.from('class_sessions').update({ spots_booked: session.spots_booked + 1 }).eq('id', sessionId),
+      ])
+
+      const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', user.id).single()
+      if (prof) await sendBookingConfirmation({ to: prof.email, name: prof.full_name || prof.email, session }).catch(console.error)
+
+      return NextResponse.json({ booking })
     }
 
     let userPackage = null
