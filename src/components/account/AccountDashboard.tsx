@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { format, parseISO, isFuture } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCalendarDays, faBox, faCircleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faCalendarDays, faBox, faCircleExclamation, faTriangleExclamation, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Booking, UserPackage } from '@/types'
@@ -17,15 +17,17 @@ interface Props {
   userPackages: UserPackage[]
   profile: { full_name: string | null; email: string; avatar_url: string | null } | null
   creditSessions: number
+  cancellationHoursLimit: number
   locale: string
 }
 
-export default function AccountDashboard({ bookings, userPackages, profile, creditSessions, locale }: Props) {
+export default function AccountDashboard({ bookings, userPackages, profile, creditSessions, cancellationHoursLimit, locale }: Props) {
   const t = useTranslations('account')
   const tCommon = useTranslations('common')
   const dateLocale = locale === 'es' ? es : enUS
   const [tab, setTab] = useState<'bookings' | 'packages'>('bookings')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmBooking, setConfirmBooking] = useState<{ id: string; willLose: boolean } | null>(null)
 
   const upcomingBookings = bookings.filter(
     (b) => b.session && isFuture(parseISO(`${b.session.date}T${b.session.start_time}`))
@@ -37,20 +39,27 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
   const activePackages = userPackages.filter((up) => isFuture(parseISO(up.expires_at)))
   const expiredPackages = userPackages.filter((up) => !isFuture(parseISO(up.expires_at)))
 
-  async function handleCancel(bookingId: string) {
-    setCancellingId(bookingId)
+  function handleCancelClick(bookingId: string, sessionDate: string, sessionTime: string) {
+    const sessionDateTime = new Date(`${sessionDate}T${sessionTime}`)
+    const hoursUntilClass = (sessionDateTime.getTime() - Date.now()) / (1000 * 60 * 60)
+    const willLose = hoursUntilClass < cancellationHoursLimit
+    setConfirmBooking({ id: bookingId, willLose })
+  }
+
+  async function handleConfirmCancel() {
+    if (!confirmBooking) return
+    setCancellingId(confirmBooking.id)
+    setConfirmBooking(null)
     try {
-      const res = await fetch(`/api/bookings/${bookingId}/cancel`, { method: 'POST' })
+      const res = await fetch(`/api/bookings/${confirmBooking.id}/cancel`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
         if (data.creditGranted) {
           toast.success(locale === 'es'
-            ? '¡Reserva cancelada! Se añadió un crédito a tu cuenta para usarlo en otra clase.'
-            : 'Booking cancelled! A credit was added to your account for another class.')
+            ? '¡Reserva cancelada! Se añadió 1 crédito a tu cuenta.'
+            : 'Booking cancelled! 1 credit added to your account.')
         } else {
-          toast.success(locale === 'es'
-            ? 'Reserva cancelada. La cancelación fue dentro del período límite, no se generó crédito.'
-            : `Booking cancelled. Cancellation was within the ${data.cancellationHoursLimit}h limit — no credit issued.`)
+          toast.success(locale === 'es' ? 'Reserva cancelada.' : 'Booking cancelled.')
         }
         window.location.reload()
       } else {
@@ -83,7 +92,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleCancel(booking.id)}
+            onClick={() => handleCancelClick(booking.id, session.date, session.start_time)}
             disabled={cancellingId === booking.id}
             className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
           >
@@ -207,6 +216,72 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
               ))}
             </>
           )}
+        </div>
+      )}
+      {/* ── CANCEL CONFIRMATION MODAL ─────────────────────── */}
+      {confirmBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            {confirmBooking.willLose ? (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <FontAwesomeIcon icon={faTriangleExclamation} className="w-5 h-5 text-red-500" />
+                  </div>
+                  <h2 className="font-bold text-primary text-lg">
+                    {locale === 'es' ? 'Cancelación tardía' : 'Late cancellation'}
+                  </h2>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {locale === 'es'
+                    ? `Estás cancelando con menos de ${cancellationHoursLimit} horas de anticipación.`
+                    : `You're cancelling with less than ${cancellationHoursLimit} hours notice.`}
+                </p>
+                <p className="text-sm font-medium text-red-600 mb-6">
+                  {locale === 'es'
+                    ? 'Perderás esta clase y el pago. No se generará ningún crédito.'
+                    : 'You will lose this class and your payment. No credit will be issued.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-[#F4EF71]/40 flex items-center justify-center shrink-0">
+                    <FontAwesomeIcon icon={faCircleCheck} className="w-5 h-5 text-[#1E1E1E]" />
+                  </div>
+                  <h2 className="font-bold text-primary text-lg">
+                    {locale === 'es' ? 'Cancelar reserva' : 'Cancel booking'}
+                  </h2>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  {locale === 'es'
+                    ? `Estás cancelando con más de ${cancellationHoursLimit} horas de anticipación.`
+                    : `You're cancelling with more than ${cancellationHoursLimit} hours notice.`}
+                </p>
+                <p className="text-sm font-medium text-[#1E1E1E] mb-6">
+                  {locale === 'es'
+                    ? 'Recibirás 1 crédito para reservar otra clase en el futuro.'
+                    : "You'll receive 1 credit to book another class in the future."}
+                </p>
+              </>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmBooking(null)}
+                className="flex-1"
+              >
+                {locale === 'es' ? 'Volver' : 'Go back'}
+              </Button>
+              <Button
+                onClick={handleConfirmCancel}
+                className={`flex-1 ${confirmBooking.willLose ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+              >
+                {locale === 'es' ? 'Sí, cancelar' : 'Yes, cancel'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

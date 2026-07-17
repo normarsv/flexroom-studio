@@ -15,7 +15,7 @@ export default async function AccountPage({
 
   const now = new Date().toISOString()
 
-  const [bookingsRes, packagesRes, profileRes] = await Promise.all([
+  const [bookingsRes, packagesRes, profileRes, settingsRes] = await Promise.all([
     supabase
       .from('bookings')
       .select('*, session:class_sessions(*, instructor:instructors(*))')
@@ -33,6 +33,11 @@ export default async function AccountPage({
       .select('full_name, email, avatar_url, credit_sessions')
       .eq('id', user.id)
       .single(),
+    supabase
+      .from('studio_settings')
+      .select('cancellation_hours_limit')
+      .eq('id', 1)
+      .single(),
   ])
 
   return (
@@ -41,6 +46,7 @@ export default async function AccountPage({
       userPackages={packagesRes.data || []}
       profile={profileRes.data}
       creditSessions={profileRes.data?.credit_sessions ?? 0}
+      cancellationHoursLimit={settingsRes.data?.cancellation_hours_limit ?? 12}
       locale={locale}
     />
   )
