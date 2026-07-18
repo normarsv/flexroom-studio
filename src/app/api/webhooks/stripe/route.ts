@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session
     const { packageId, userId, classSessionId, couponId } = session.metadata!
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     if (classSessionId) {
       // Single-session booking paid via Stripe
