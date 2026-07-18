@@ -17,13 +17,6 @@ export const metadata: Metadata = {
   title: 'Flex Room Studio',
   description: 'Tu segundo hogar — Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas',
   manifest: '/manifest.json',
-  icons: {
-    icon: [
-      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -34,6 +27,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html className={`${dmSans.variable} ${nunito.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Light mode favicon */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" media="(prefers-color-scheme: light)" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" media="(prefers-color-scheme: light)" />
+        {/* Dark mode favicon */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-dark-32.png" media="(prefers-color-scheme: dark)" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-dark-16.png" media="(prefers-color-scheme: dark)" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      </head>
       <body className="min-h-screen bg-background antialiased">
         {children}
       </body>
