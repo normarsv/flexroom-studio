@@ -188,6 +188,7 @@ function HomeContent({
               <div
                 key={d.num}
                 className="group bg-card rounded-3xl border border-border p-6 md:p-8 flex flex-col
+                  items-center text-center md:items-start md:text-left
                   cursor-default select-none
                   hover:-translate-y-2 hover:shadow-xl hover:border-[#F4EF71]/40
                   transition-all duration-300 ease-out"
@@ -275,7 +276,7 @@ function HomeContent({
         <div className="relative z-10 max-w-5xl mx-auto">
           {aboutImageUrl ? (
             /* Two-column layout when image is set */
-            <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="flex flex-col lg:flex-row items-center gap-12 text-center lg:text-left">
               <div className="relative w-full max-w-xs lg:max-w-sm shrink-0 aspect-[4/5] rounded-3xl overflow-hidden">
                 <Image src={aboutImageUrl} alt="Sobre flexroom" fill className="object-cover" />
               </div>
