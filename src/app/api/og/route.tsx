@@ -1,11 +1,8 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'flexroom. fit social hub'
-export const size = { width: 1200, height: 630 }
-export const contentType = 'image/png'
 
-export default function OGImage() {
+export async function GET() {
   return new ImageResponse(
     (
       <div
@@ -47,8 +44,7 @@ export default function OGImage() {
         }} />
 
         {/* Main content */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0px' }}>
-          {/* Logo */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{
             fontSize: '120px',
             fontWeight: 900,
@@ -60,7 +56,6 @@ export default function OGImage() {
             flexroom.
           </div>
 
-          {/* Divider */}
           <div style={{
             width: '64px',
             height: '3px',
@@ -69,7 +64,6 @@ export default function OGImage() {
             marginBottom: '24px',
           }} />
 
-          {/* Tagline */}
           <div style={{
             fontSize: '22px',
             fontWeight: 600,
@@ -80,7 +74,6 @@ export default function OGImage() {
             FIT SOCIAL HUB
           </div>
 
-          {/* Location */}
           <div style={{
             marginTop: '32px',
             fontSize: '18px',
@@ -91,19 +84,17 @@ export default function OGImage() {
           </div>
         </div>
 
-        {/* Domain watermark */}
         <div style={{
           position: 'absolute',
           bottom: '32px',
           right: '48px',
           fontSize: '16px',
           color: '#cccccc',
-          letterSpacing: '0.5px',
         }}>
           www.flexroomstudio.com
         </div>
       </div>
     ),
-    { ...size }
+    { width: 1200, height: 630 }
   )
 }

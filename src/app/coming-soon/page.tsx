@@ -9,13 +9,13 @@ export const metadata = {
     description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas. Muy pronto abrimos las puertas.',
     url: 'https://www.flexroomstudio.com',
     siteName: 'flexroom.',
-    images: [{ url: 'https://www.flexroomstudio.com/opengraph-image', width: 1200, height: 630 }],
+    images: [{ url: 'https://www.flexroomstudio.com/api/og', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'flexroom. fit social hub',
     description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas.',
-    images: ['https://www.flexroomstudio.com/opengraph-image'],
+    images: ['https://www.flexroomstudio.com/api/og'],
   },
 }
 
