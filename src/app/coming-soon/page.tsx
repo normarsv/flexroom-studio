@@ -2,8 +2,21 @@ import ComingSoon from '@/components/ComingSoon'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata = {
-  title: 'Flexroom Studio — Próximamente',
-  description: 'Estamos preparando un nuevo espacio lleno de energía, dinamismo y flexibilidad. Muy pronto abrimos las puertas.',
+  title: 'flexroom. fit social hub',
+  description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas. Muy pronto abrimos las puertas.',
+  openGraph: {
+    title: 'flexroom. fit social hub',
+    description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas. Muy pronto abrimos las puertas.',
+    url: 'https://www.flexroomstudio.com',
+    siteName: 'flexroom.',
+    images: [{ url: 'https://www.flexroomstudio.com/opengraph-image', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'flexroom. fit social hub',
+    description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas.',
+    images: ['https://www.flexroomstudio.com/opengraph-image'],
+  },
 }
 
 export default async function ComingSoonPage() {

@@ -15,12 +15,25 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: 'flexroom. fit social hub',
-  description: 'Tu segundo hogar — Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas',
+  description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas.',
   manifest: '/manifest.json',
+  openGraph: {
+    title: 'flexroom. fit social hub',
+    description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas.',
+    url: 'https://www.flexroomstudio.com',
+    siteName: 'flexroom.',
+    images: [{ url: 'https://www.flexroomstudio.com/opengraph-image', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'flexroom. fit social hub',
+    description: 'Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas, Chiapas.',
+    images: ['https://www.flexroomstudio.com/opengraph-image'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Flex Room',
+    title: 'flexroom.',
   },
 }
 
