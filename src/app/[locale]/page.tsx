@@ -80,7 +80,7 @@ function HomeContent({
 
           <div className={heroImageUrl ? 'flex-1' : 'max-w-3xl mx-auto'}>
             {/* Location pill */}
-            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-8 bg-background/60 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-8 mt-3 md:mt-0 bg-background/60 backdrop-blur-sm">
               <FontAwesomeIcon icon={faLocationDot} className="w-3 h-3 text-[#F4EF71]" />
               San Cristóbal de las Casas, Chiapas
             </div>
