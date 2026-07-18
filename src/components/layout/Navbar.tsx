@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBars, faXmark, faGlobe } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
@@ -18,19 +18,22 @@ export default function Navbar({ locale }: { locale: string }) {
   const [user, setUser] = useState<{ email?: string; isAdmin?: boolean } | null>(null)
 
   // Check auth on mount
-  useState(() => {
+  useEffect(() => {
+    let cancelled = false
     const supabase = createClient()
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
           .single()
-        setUser({ email: session.user.email, isAdmin: profile?.is_admin })
+        if (!cancelled) setUser({ email: session.user.email, isAdmin: profile?.is_admin })
       }
     })
-  })
+    return () => { cancelled = true }
+  }, [])
 
   const otherLocale = locale === 'es' ? 'en' : 'es'
   const switchLocale = () => {

@@ -137,31 +137,6 @@ export default function MetricsDashboard({ bookings, requests, packageSales, mon
         </div>
       </div>
 
-      {/* Class requests */}
-      {requests.length > 0 && (
-        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <h2 className="text-sm font-semibold text-primary">Solicitudes de clase ({requests.length})</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {requests.map((req) => (
-              <div key={req.id} className="px-5 py-3 flex items-start gap-4 text-sm">
-                <div className="flex-1">
-                  <p className="font-medium text-primary">{req.name}</p>
-                  <p className="text-muted-foreground text-xs">{req.email}</p>
-                  {req.preferred_day && <p className="text-xs text-muted-foreground">{req.preferred_day} {req.preferred_time}</p>}
-                  {req.class_type && (
-                    <p className="text-xs text-muted-foreground">
-                      {CLASS_TYPE_LABELS[req.class_type as ClassType]?.es}
-                    </p>
-                  )}
-                </div>
-                {req.message && <p className="text-xs text-muted-foreground max-w-xs">{req.message}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -242,18 +242,14 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <FontAwesomeIcon icon={faUsers} className="w-3 h-3 text-muted-foreground" />
-                  <span className={`text-xs ${
-                    isFull
-                      ? 'text-muted-foreground'
-                      : spotsLeft <= 2
-                        ? 'text-amber-600 font-medium'
-                        : 'text-muted-foreground'
-                  }`}>
-                    {isFull ? t('full') : t('spots_left', { count: spotsLeft })}
-                  </span>
-                </div>
+                {(isFull || spotsLeft <= 3) && (
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <FontAwesomeIcon icon={faUsers} className="w-3 h-3 text-muted-foreground" />
+                    <span className={`text-xs font-medium ${isFull ? 'text-muted-foreground' : 'text-amber-600'}`}>
+                      {isFull ? t('full') : locale === 'es' ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'} disponible${spotsLeft === 1 ? '' : 's'}!` : `Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!`}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Book button */}

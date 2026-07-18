@@ -1,67 +1,48 @@
 import { createClient } from '@/lib/supabase/server'
+import AdminClientsTable from '@/components/admin/AdminClientsTable'
 
 export default async function AdminClientsPage() {
   const supabase = await createClient()
 
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('*, user_packages(id, expires_at, sessions_remaining, package:packages(name_es))')
-    .eq('is_admin', false)
-    .order('created_at', { ascending: false })
+  const [profilesRes, packagesRes, bookingsRes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('*, user_packages(id, expires_at, sessions_remaining, package:packages(name_es))')
+      .eq('is_admin', false)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('packages')
+      .select('id, name_es, session_count, validity_days')
+      .eq('is_active', true)
+      .order('sort_order'),
+    supabase
+      .from('bookings')
+      .select('user_id, created_at, status, session:class_sessions(date, class_type, start_time)')
+      .not('user_id', 'is', null),
+  ])
+
+  // Group bookings by user_id and attach to profiles
+  const bookingsByUser: Record<string, any[]> = {}
+  for (const b of bookingsRes.data || []) {
+    if (!bookingsByUser[b.user_id]) bookingsByUser[b.user_id] = []
+    bookingsByUser[b.user_id].push(b)
+  }
+
+  const clients = (profilesRes.data || []).map((p: any) => ({
+    ...p,
+    bookings: bookingsByUser[p.id] || [],
+  }))
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-primary mb-6">Clientes</h1>
-
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="text-left px-4 py-3 font-medium text-primary">Nombre</th>
-                <th className="text-left px-4 py-3 font-medium text-primary">Correo</th>
-                <th className="text-left px-4 py-3 font-medium text-primary">Membresías activas</th>
-                <th className="text-left px-4 py-3 font-medium text-primary">Registro</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(profiles || []).map((profile: any) => {
-                const activePkgs = profile.user_packages?.filter(
-                  (up: any) => new Date(up.expires_at) > new Date()
-                ) || []
-                return (
-                  <tr key={profile.id} className="hover:bg-secondary/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-primary">
-                      {profile.full_name || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{profile.email}</td>
-                    <td className="px-4 py-3">
-                      {activePkgs.length === 0 ? (
-                        <span className="text-muted-foreground text-xs">Sin membresías</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {activePkgs.map((up: any) => (
-                            <span key={up.id} className="text-xs bg-secondary text-primary px-2 py-0.5 rounded-full">
-                              {up.package?.name_es}
-                              {up.sessions_remaining !== null && ` (${up.sessions_remaining})`}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {new Date(profile.created_at).toLocaleDateString('es-MX')}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          {(!profiles || profiles.length === 0) && (
-            <p className="text-center text-muted-foreground py-8">No hay clientes registrados</p>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-primary">Clientes</h1>
+        <span className="text-sm text-muted-foreground">{clients.length} registrados</span>
       </div>
+      <AdminClientsTable
+        clients={clients as any}
+        packages={(packagesRes.data as any) || []}
+      />
     </div>
   )
 }

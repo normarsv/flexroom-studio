@@ -45,9 +45,9 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
       const supabase = createClient()
       const ext = file.name.split('.').pop()
       const path = `instructors/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('media').upload(path, file)
+      const { error } = await supabase.storage.from('fs-media').upload(path, file)
       if (error) throw error
-      const { data } = supabase.storage.from('media').getPublicUrl(path)
+      const { data } = supabase.storage.from('fs-media').getPublicUrl(path)
       setForm((prev) => ({ ...prev, photo_url: data.publicUrl }))
     } catch {
       toast.error('Error al subir foto')

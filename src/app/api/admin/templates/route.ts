@@ -12,19 +12,14 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const body = await request.json()
+  const { day_of_week, start_time, duration_minutes, class_type, instructor_id, capacity } = await request.json()
 
-  const allowed = ['cancellation_hours_limit', 'footer_tagline_es', 'footer_tagline_en', 'footer_address', 'footer_instagram', 'footer_email', 'footer_phone']
-  const updates: Record<string, any> = {}
-  for (const key of allowed) {
-    if (key in body) updates[key] = body[key]
-  }
-
-  const { error } = await supabase
-    .from('studio_settings')
-    .update(updates)
-    .eq('id', 1)
+  const { data, error } = await supabase
+    .from('recurring_templates')
+    .insert({ day_of_week, start_time, duration_minutes: duration_minutes || 50, class_type, instructor_id, capacity: capacity || 5, is_active: true })
+    .select('*, instructor:instructors(*)')
+    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  return NextResponse.json(data)
 }

@@ -13,7 +13,7 @@ export default async function AdminSchedulePage({
   const limit = new Date()
   limit.setDate(today.getDate() + 30)
 
-  const [sessionsRes, instructorsRes, templatesRes] = await Promise.all([
+  const [sessionsRes, instructorsRes, templatesRes, requestsRes] = await Promise.all([
     supabase
       .from('class_sessions')
       .select('*, instructor:instructors(*)')
@@ -28,6 +28,10 @@ export default async function AdminSchedulePage({
       .eq('is_active', true)
       .order('day_of_week')
       .order('start_time'),
+    supabase
+      .from('class_requests')
+      .select('*')
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -35,6 +39,7 @@ export default async function AdminSchedulePage({
       sessions={sessionsRes.data || []}
       instructors={instructorsRes.data || []}
       templates={templatesRes.data || []}
+      requests={requestsRes.data || []}
       locale={locale}
     />
   )

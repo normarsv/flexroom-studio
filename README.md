@@ -74,3 +74,29 @@ RESEND_API_KEY=re_...
 ### 6. Before go-live
 - Delete or secure the debug endpoint at `src/app/api/debug/route.ts`
 - Test a full booking flow end-to-end on production before sharing with clients
+
+---
+
+## Next Phase
+
+Features planned for the next iteration:
+
+### Notifications
+- **Booking confirmation email** — Resend integration is wired up; verify API key and test delivery
+- **24h class reminder email** — scheduled job to notify clients the day before their class
+- **Package expiry warning** — email clients 3 days before their membership expires
+- **Cancellation email** — confirmation when a client cancels a booking
+
+### Booking UX
+- **Waitlist** — when a class is full, clients can join a waitlist and get auto-notified when a spot opens
+
+### Admin Panel
+- **Editable homepage stats** — "9 instructores / 3 disciplinas / 50 min" are currently hardcoded; move to Configuración tab
+- **Booking fill % on metrics** — show which classes consistently sell out vs. run empty
+- **Admin audit log** — track who changed what and when (useful when handing off to studio staff)
+
+### Technical
+- **Custom 404 page** — currently shows the default Next.js error screen
+- **Rate limiting** on `/api/bookings/checkout` and `/api/coupons/validate` to prevent abuse
+- **Locale-aware error messages** in API responses (currently all in Spanish)
+- **Error boundaries** on page-level components for friendly fallback UI on failures

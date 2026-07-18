@@ -17,7 +17,7 @@ import {
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
 const navItems: { href: string; label: string; icon: IconDefinition }[] = [
-  { href: 'schedule', label: 'Horario', icon: faCalendarDays },
+  { href: 'schedule', label: 'Clases', icon: faCalendarDays },
   { href: 'packages', label: 'Membresías', icon: faBox },
   { href: 'instructors', label: 'Instructores', icon: faCircleUser },
   { href: 'gallery', label: 'Galería', icon: faImage },

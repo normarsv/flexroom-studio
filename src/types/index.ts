@@ -143,6 +143,12 @@ export interface Profile {
 export interface StudioSettings {
   id: number
   cancellation_hours_limit: number
+  footer_tagline_es: string | null
+  footer_tagline_en: string | null
+  footer_address: string | null
+  footer_instagram: string | null
+  footer_email: string | null
+  footer_phone: string | null
 }
 
 export interface Coupon {

@@ -8,23 +8,27 @@ async function checkAdmin(supabase: any) {
   return profile?.is_admin === true
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const body = await request.json()
+  const { data: profile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('credit_sessions')
+    .eq('id', id)
+    .single()
 
-  const allowed = ['cancellation_hours_limit', 'footer_tagline_es', 'footer_tagline_en', 'footer_address', 'footer_instagram', 'footer_email', 'footer_phone']
-  const updates: Record<string, any> = {}
-  for (const key of allowed) {
-    if (key in body) updates[key] = body[key]
-  }
+  if (fetchError || !profile) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
 
   const { error } = await supabase
-    .from('studio_settings')
-    .update(updates)
-    .eq('id', 1)
+    .from('profiles')
+    .update({ credit_sessions: profile.credit_sessions + 1 })
+    .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ credit_sessions: profile.credit_sessions + 1 })
 }

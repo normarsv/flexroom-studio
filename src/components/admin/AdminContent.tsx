@@ -16,10 +16,41 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'cancellation_settings'
+type Tab = 'homepage' | 'cancellation_settings' | 'footer'
 
 export default function AdminContent({ policy, homepage, settings, locale }: Props) {
   const [tab, setTab] = useState<Tab>('homepage')
+
+  // Footer settings
+  const [footerTaglineEs, setFooterTaglineEs] = useState(settings?.footer_tagline_es ?? '')
+  const [footerTaglineEn, setFooterTaglineEn] = useState(settings?.footer_tagline_en ?? '')
+  const [footerAddress, setFooterAddress] = useState(settings?.footer_address ?? '')
+  const [footerInstagram, setFooterInstagram] = useState(settings?.footer_instagram ?? '')
+  const [footerEmail, setFooterEmail] = useState(settings?.footer_email ?? '')
+  const [footerPhone, setFooterPhone] = useState(settings?.footer_phone ?? '')
+  const [footerLoading, setFooterLoading] = useState(false)
+
+  async function handleSaveFooter() {
+    setFooterLoading(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          footer_tagline_es: footerTaglineEs,
+          footer_tagline_en: footerTaglineEn,
+          footer_address: footerAddress,
+          footer_instagram: footerInstagram,
+          footer_email: footerEmail,
+          footer_phone: footerPhone || null,
+        }),
+      })
+      if (res.ok) toast.success('Footer actualizado')
+      else toast.error('Error al guardar')
+    } finally {
+      setFooterLoading(false)
+    }
+  }
 
   // Cancellation policy
   const [contentEs, setContentEs] = useState(policy?.content_es || '')
@@ -134,6 +165,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
         {([
           { key: 'homepage', label: 'Página de inicio' },
+          { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
@@ -342,6 +374,91 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       </div>
 
       </>}
+
+      {/* ── FOOTER ────────────────────────────────────────── */}
+      {tab === 'footer' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">Footer</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">Información de contacto y texto que aparece en el pie de página del sitio.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Slogan (ES)</label>
+              <input
+                type="text"
+                value={footerTaglineEs}
+                onChange={(e) => setFooterTaglineEs(e.target.value)}
+                placeholder="Tu segundo hogar"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Slogan (EN)</label>
+              <input
+                type="text"
+                value={footerTaglineEn}
+                onChange={(e) => setFooterTaglineEn(e.target.value)}
+                placeholder="Your second home"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-primary block mb-1">Dirección</label>
+            <input
+              type="text"
+              value={footerAddress}
+              onChange={(e) => setFooterAddress(e.target.value)}
+              placeholder="Calle, Colonia, Ciudad, Estado"
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Instagram (URL completa)</label>
+              <input
+                type="url"
+                value={footerInstagram}
+                onChange={(e) => setFooterInstagram(e.target.value)}
+                placeholder="https://www.instagram.com/flexroomstudio"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Correo electrónico</label>
+              <input
+                type="email"
+                value={footerEmail}
+                onChange={(e) => setFooterEmail(e.target.value)}
+                placeholder="hola@flexroomstudio.com"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Teléfono (opcional)</label>
+              <input
+                type="tel"
+                value={footerPhone}
+                onChange={(e) => setFooterPhone(e.target.value)}
+                placeholder="+52 967 000 0000"
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleSaveFooter}
+            disabled={footerLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {footerLoading ? 'Guardando...' : 'Guardar footer'}
+          </Button>
+        </div>
+      )}
 
       {/* ── CANCELLATION SETTINGS ─────────────────────────── */}
       {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">
