@@ -19,8 +19,8 @@ export async function middleware(request: NextRequest) {
     return authResponse
   }
 
-  // Skip i18n for coming-soon (standalone page, no locale prefix)
-  if (pathname === '/coming-soon') {
+  // Skip i18n for standalone pages with no locale prefix
+  if (pathname === '/coming-soon' || pathname.includes('opengraph-image')) {
     return NextResponse.next()
   }
 
