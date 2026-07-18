@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { CancellationPolicy, HomepageContent, StudioSettings } from '@/types'
 import { toast } from 'sonner'
@@ -16,10 +16,82 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'coming_soon' | 'cancellation_settings'
+type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users'
+
+interface AdminUser {
+  id: string
+  email: string
+  full_name: string | null
+  is_admin: boolean
+  is_coach: boolean
+}
 
 export default function AdminContent({ policy, homepage, settings, locale }: Props) {
   const [tab, setTab] = useState<Tab>('homepage')
+
+  // Users tab
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [newUserEmail, setNewUserEmail] = useState('')
+  const [newUserName, setNewUserName] = useState('')
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'coach'>('admin')
+  const [addingUser, setAddingUser] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'users' && adminUsers.length === 0) fetchAdminUsers()
+  }, [tab])
+
+  async function fetchAdminUsers() {
+    setUsersLoading(true)
+    try {
+      const res = await fetch('/api/admin/users')
+      if (res.ok) setAdminUsers(await res.json())
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  async function handleAddUser(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newUserEmail) return
+    setAddingUser(true)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newUserEmail, full_name: newUserName, role: newUserRole }),
+      })
+      if (res.ok) {
+        const user = await res.json()
+        setAdminUsers((prev) => {
+          const exists = prev.find((u) => u.id === user.id)
+          return exists ? prev.map((u) => u.id === user.id ? user : u) : [...prev, user]
+        })
+        setShowAddUser(false)
+        setNewUserEmail('')
+        setNewUserName('')
+        setNewUserRole('admin')
+        toast.success('Usuario agregado')
+      } else {
+        const { error } = await res.json()
+        toast.error(error || 'Error al agregar usuario')
+      }
+    } finally {
+      setAddingUser(false)
+    }
+  }
+
+  async function handleRemoveUser(id: string) {
+    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setAdminUsers((prev) => prev.filter((u) => u.id !== id))
+      toast.success('Rol eliminado')
+    } else {
+      const { error } = await res.json()
+      toast.error(error || 'Error al eliminar')
+    }
+  }
 
   // Coming soon settings
   const [comingSoonEnabled, setComingSoonEnabled] = useState(settings?.coming_soon_enabled ?? false)
@@ -192,6 +264,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'homepage', label: 'Página de inicio' },
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
+          { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
@@ -483,6 +556,104 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           >
             {footerLoading ? 'Guardando...' : 'Guardar footer'}
           </Button>
+        </div>
+      )}
+
+      {/* ── USERS ─────────────────────────────────────────── */}
+      {tab === 'users' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Usuarios</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Administradores y coaches con acceso especial.</p>
+            </div>
+            <Button onClick={() => setShowAddUser(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              + Agregar usuario
+            </Button>
+          </div>
+
+          {/* Add user modal */}
+          {showAddUser && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <form onSubmit={handleAddUser} className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+                <h3 className="font-semibold text-primary">Agregar usuario</h3>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Nombre completo</label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="Nombre Apellido"
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Correo electrónico *</label>
+                  <input
+                    type="email"
+                    required
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Rol</label>
+                  <div className="flex gap-2">
+                    {(['admin', 'coach'] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setNewUserRole(r)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newUserRole === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
+                      >
+                        {r === 'admin' ? 'Admin' : 'Coach'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => setShowAddUser(false)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
+                  <button type="submit" disabled={addingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                    {addingUser ? 'Agregando...' : 'Agregar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Users list */}
+          {usersLoading ? (
+            <p className="text-sm text-muted-foreground">Cargando...</p>
+          ) : adminUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay administradores ni coaches registrados.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {adminUsers.map((u) => (
+                <div key={u.id} className="flex items-center justify-between py-3">
+                  <div>
+                    <div className="text-sm font-medium text-primary">{u.full_name || '—'}</div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {u.is_admin && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">Admin</span>
+                    )}
+                    {u.is_coach && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Coach</span>
+                    )}
+                    <button
+                      onClick={() => handleRemoveUser(u.id)}
+                      className="text-xs text-red-500 hover:text-red-700 ml-2"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
