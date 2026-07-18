@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
 
   // Coming soon redirect — skip admin, login, api, auth, the page itself, and preview holders
   const hasPreviewAccess = request.cookies.get('preview_access')?.value === '1'
-  const isExcluded = hasPreviewAccess || pathname.includes('/admin') || pathname.includes('/login') || pathname.includes('/coming-soon')
+  const isExcluded = hasPreviewAccess || pathname.includes('/admin') || pathname.includes('/login') || pathname.includes('/coming-soon') || pathname.includes('opengraph-image')
   if (!isExcluded) {
     const { data: settings } = await supabase
       .from('studio_settings')
