@@ -14,7 +14,7 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Flex Room Studio',
+  title: 'flexroom. fit social hub',
   description: 'Tu segundo hogar — Pilates Reformer, Funcional y Barre en San Cristóbal de las Casas',
   manifest: '/manifest.json',
   appleWebApp: {
