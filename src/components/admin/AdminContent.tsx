@@ -16,10 +16,35 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'cancellation_settings' | 'footer'
+type Tab = 'homepage' | 'footer' | 'coming_soon' | 'cancellation_settings'
 
 export default function AdminContent({ policy, homepage, settings, locale }: Props) {
   const [tab, setTab] = useState<Tab>('homepage')
+
+  // Coming soon settings
+  const [comingSoonEnabled, setComingSoonEnabled] = useState(settings?.coming_soon_enabled ?? false)
+  const [comingSoonPassword, setComingSoonPassword] = useState(settings?.coming_soon_password ?? 'flexroom2026')
+  const [comingSoonLaunchDate, setComingSoonLaunchDate] = useState(settings?.coming_soon_launch_date ?? '')
+  const [comingSoonLoading, setComingSoonLoading] = useState(false)
+
+  async function handleSaveComingSoon() {
+    setComingSoonLoading(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coming_soon_enabled: comingSoonEnabled,
+          coming_soon_password: comingSoonPassword || 'flexroom2026',
+          coming_soon_launch_date: comingSoonLaunchDate || null,
+        }),
+      })
+      if (res.ok) toast.success('Página "Próximamente" actualizada')
+      else toast.error('Error al guardar')
+    } finally {
+      setComingSoonLoading(false)
+    }
+  }
 
   // Footer settings
   const [footerTaglineEs, setFooterTaglineEs] = useState(settings?.footer_tagline_es ?? '')
@@ -167,6 +192,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'homepage', label: 'Página de inicio' },
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
+          { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
@@ -456,6 +482,64 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
             className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {footerLoading ? 'Guardando...' : 'Guardar footer'}
+          </Button>
+        </div>
+      )}
+
+      {/* ── COMING SOON ───────────────────────────────────── */}
+      {tab === 'coming_soon' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">Página "Próximamente"</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Configura la página de cuenta regresiva. Disponible en{' '}
+              <a href="/coming-soon" target="_blank" className="underline text-primary">/coming-soon</a>.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              role="switch"
+              aria-checked={comingSoonEnabled}
+              onClick={() => setComingSoonEnabled((v) => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${comingSoonEnabled ? 'bg-primary' : 'bg-border'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${comingSoonEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+            <span className="text-sm text-primary font-medium">
+              {comingSoonEnabled ? 'Activada — redirige visitantes a /coming-soon' : 'Desactivada — muestra el sitio normal'}
+            </span>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-primary block mb-1">Contraseña de acceso anticipado</label>
+            <input
+              type="text"
+              value={comingSoonPassword}
+              onChange={(e) => setComingSoonPassword(e.target.value)}
+              placeholder="flexroom2026"
+              className="w-full max-w-sm px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Usa esta contraseña en el botón "Preview access" para ver el sitio antes del lanzamiento.</p>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-primary block mb-1">Fecha de lanzamiento</label>
+            <input
+              type="date"
+              value={comingSoonLaunchDate}
+              onChange={(e) => setComingSoonLaunchDate(e.target.value)}
+              className="w-full max-w-sm px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Controla la cuenta regresiva. Si se deja vacío, cuenta 30 días desde hoy.</p>
+          </div>
+
+          <Button
+            onClick={handleSaveComingSoon}
+            disabled={comingSoonLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {comingSoonLoading ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>
       )}

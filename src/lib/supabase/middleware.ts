@@ -25,8 +25,10 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const pathname = request.nextUrl.pathname
+
   // Protect admin routes
-  const isAdminPath = request.nextUrl.pathname.includes('/admin')
+  const isAdminPath = pathname.includes('/admin')
   if (isAdminPath) {
     if (!user) {
       const url = request.nextUrl.clone()
@@ -43,6 +45,23 @@ export async function updateSession(request: NextRequest) {
     if (!profile?.is_admin) {
       const url = request.nextUrl.clone()
       url.pathname = '/es'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // Coming soon redirect — skip admin, login, api, auth, the page itself, and preview holders
+  const hasPreviewAccess = request.cookies.get('preview_access')?.value === '1'
+  const isExcluded = hasPreviewAccess || pathname.includes('/admin') || pathname.includes('/login') || pathname.includes('/coming-soon')
+  if (!isExcluded) {
+    const { data: settings } = await supabase
+      .from('studio_settings')
+      .select('coming_soon_enabled')
+      .eq('id', 1)
+      .single()
+
+    if (settings?.coming_soon_enabled) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/coming-soon'
       return NextResponse.redirect(url)
     }
   }

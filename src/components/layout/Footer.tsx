@@ -1,15 +1,18 @@
+'use client'
+
 import { useTranslations } from 'next-intl'
-import Link from 'next/link'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faLocationDot, faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons'
 import { faInstagram } from '@fortawesome/free-brands-svg-icons'
 import { BRAND } from '@/lib/constants'
-import { createClient } from '@/lib/supabase/server'
+import { StudioSettings } from '@/types'
 
-export default async function Footer() {
+interface Props {
+  settings: StudioSettings | null
+}
+
+export default function Footer({ settings }: Props) {
   const t = useTranslations('footer')
-  const supabase = await createClient()
-  const { data: settings } = await supabase.from('studio_settings').select('*').eq('id', 1).single()
 
   const tagline = settings?.footer_tagline_es || BRAND.tagline_es
   const address = settings?.footer_address || t('address')

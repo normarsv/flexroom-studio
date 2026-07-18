@@ -149,6 +149,9 @@ export interface StudioSettings {
   footer_instagram: string | null
   footer_email: string | null
   footer_phone: string | null
+  coming_soon_enabled: boolean
+  coming_soon_password: string | null
+  coming_soon_launch_date: string | null
 }
 
 export interface Coupon {

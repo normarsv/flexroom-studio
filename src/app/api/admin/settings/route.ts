@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const allowed = ['cancellation_hours_limit', 'footer_tagline_es', 'footer_tagline_en', 'footer_address', 'footer_instagram', 'footer_email', 'footer_phone']
+  const allowed = ['cancellation_hours_limit', 'footer_tagline_es', 'footer_tagline_en', 'footer_address', 'footer_instagram', 'footer_email', 'footer_phone', 'coming_soon_enabled', 'coming_soon_password', 'coming_soon_launch_date']
   const updates: Record<string, any> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]

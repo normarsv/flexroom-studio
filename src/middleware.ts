@@ -19,6 +19,11 @@ export async function middleware(request: NextRequest) {
     return authResponse
   }
 
+  // Skip i18n for coming-soon (standalone page, no locale prefix)
+  if (pathname === '/coming-soon') {
+    return NextResponse.next()
+  }
+
   // Handle i18n routing
   return intlMiddleware(request)
 }

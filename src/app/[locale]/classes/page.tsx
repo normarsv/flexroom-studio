@@ -14,9 +14,10 @@ export default async function ClassesPage({
   const { booking } = await searchParams
   const supabase = await createClient()
 
-  const today = new Date()
-  const limit = new Date()
-  limit.setDate(today.getDate() + 15)
+  const todayMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const limitDate = new Date(todayMx + 'T00:00:00')
+  limitDate.setDate(limitDate.getDate() + 15)
+  const limitMx = limitDate.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
   const { data: sessions } = await supabase
     .from('class_sessions')
@@ -24,8 +25,8 @@ export default async function ClassesPage({
       *,
       instructor:instructors(*)
     `)
-    .gte('date', today.toISOString().split('T')[0])
-    .lte('date', limit.toISOString().split('T')[0])
+    .gte('date', todayMx)
+    .lte('date', limitMx)
     .eq('status', 'scheduled')
     .order('date', { ascending: true })
     .order('start_time', { ascending: true })

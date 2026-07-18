@@ -42,7 +42,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
   }, {})
 
   const dates = Object.keys(sessionsByDate).sort()
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
   // Default to today if it has sessions, otherwise the first available date
   const defaultDate = dates.includes(todayStr) ? todayStr : (dates[0] ?? '')
