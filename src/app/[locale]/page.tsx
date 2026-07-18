@@ -39,7 +39,7 @@ function HomeContent({
     <div className="overflow-x-hidden">
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center bg-background overflow-hidden px-4">
+      <section className="relative min-h-[85vh] md:min-h-screen flex flex-col items-center justify-center bg-background overflow-hidden px-6">
 
         {/* Organic circles — brand gradient blobs */}
         <div className="absolute inset-0 pointer-events-none select-none" aria-hidden>
@@ -76,11 +76,11 @@ function HomeContent({
         </div>
 
         {/* Hero content */}
-        <div className={`relative z-10 text-center max-w-5xl mx-auto w-full ${heroImageUrl ? 'flex flex-col lg:flex-row items-center gap-12 text-left' : ''}`}>
+        <div className={`relative z-10 max-w-5xl mx-auto w-full ${heroImageUrl ? 'flex flex-col lg:flex-row items-center gap-10 text-center lg:text-left' : 'text-center'}`}>
 
           <div className={heroImageUrl ? 'flex-1' : 'max-w-3xl mx-auto'}>
             {/* Location pill */}
-            <div className={`inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-10 bg-background/60 backdrop-blur-sm ${heroImageUrl ? '' : 'mx-auto'}`}>
+            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground border border-border/70 rounded-full px-3 py-1.5 mb-8 bg-background/60 backdrop-blur-sm">
               <FontAwesomeIcon icon={faLocationDot} className="w-3 h-3 text-[#F4EF71]" />
               San Cristóbal de las Casas, Chiapas
             </div>
@@ -88,37 +88,37 @@ function HomeContent({
             {/* Logo / main headline */}
             <h1
               className="font-heading font-black lowercase leading-[0.9] tracking-tight text-foreground mb-4"
-              style={{ fontSize: 'clamp(3.5rem, 13vw, 8.5rem)' }}
+              style={{ fontSize: 'clamp(3.2rem, 13vw, 8.5rem)' }}
             >
               flexroom.
             </h1>
 
             {/* Sub-tagline */}
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-muted-foreground mb-8">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-muted-foreground mb-6">
               Fit Social Hub
             </p>
 
             {/* Description */}
-            <p className={`text-base md:text-lg text-muted-foreground leading-relaxed mb-10 ${heroImageUrl ? 'max-w-lg' : 'max-w-md mx-auto'}`}>
+            <p className={`text-base md:text-lg text-muted-foreground leading-relaxed mb-8 ${heroImageUrl ? 'max-w-lg lg:mx-0 mx-auto' : 'max-w-md mx-auto'}`}>
               {heroSubtitle}
             </p>
 
             {/* CTAs */}
-            <div className={`flex flex-col sm:flex-row items-center gap-3 ${heroImageUrl ? '' : 'justify-center'}`}>
-              <Link href="./classes">
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+              <Link href="./classes" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="rounded-full bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 font-semibold px-8 gap-2"
+                  className="w-full sm:w-auto rounded-full bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 font-semibold px-8 gap-2"
                 >
                   {t('hero_cta')}
                   <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
                 </Button>
               </Link>
-              <Link href="./packages">
+              <Link href="./packages" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   variant="ghost"
-                  className="rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary px-8"
+                  className="w-full sm:w-auto rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary px-8"
                 >
                   {t('hero_cta_secondary')}
                 </Button>
@@ -128,7 +128,7 @@ function HomeContent({
 
           {/* Hero image — shown only when set from admin */}
           {heroImageUrl && (
-            <div className="relative w-full max-w-sm lg:max-w-md shrink-0 aspect-square rounded-3xl overflow-hidden">
+            <div className="relative w-full max-w-xs lg:max-w-md shrink-0 aspect-square rounded-3xl overflow-hidden">
               <Image src={heroImageUrl} alt="Flexroom Studio" fill className="object-cover" />
             </div>
           )}
@@ -143,7 +143,7 @@ function HomeContent({
       </section>
 
       {/* ── DISCIPLINES ──────────────────────────────────────── */}
-      <section className="relative py-24 px-4 overflow-hidden bg-secondary/30">
+      <section className="relative py-16 md:py-24 px-6 overflow-hidden bg-secondary/30">
 
         {/* Decorative circles */}
         <div className="absolute -right-20 -top-20 pointer-events-none select-none" aria-hidden>
@@ -174,11 +174,11 @@ function HomeContent({
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-3 text-center">
             {t('disciplines_title')}
           </p>
-          <h2 className="font-heading font-extrabold text-3xl text-foreground lowercase text-center mb-14">
+          <h2 className="font-heading font-extrabold text-3xl text-foreground lowercase text-center mb-8 md:mb-14">
             lo que hacemos
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
             {[
               { num: '01', icon: faBolt,  title: t('funcional_title'), desc: t('funcional_desc') },
@@ -187,7 +187,7 @@ function HomeContent({
             ].map((d) => (
               <div
                 key={d.num}
-                className="group bg-card rounded-3xl border border-border p-8 flex flex-col
+                className="group bg-card rounded-3xl border border-border p-6 md:p-8 flex flex-col
                   cursor-default select-none
                   hover:-translate-y-2 hover:shadow-xl hover:border-[#F4EF71]/40
                   transition-all duration-300 ease-out"
@@ -225,7 +225,7 @@ function HomeContent({
       </section>
 
       {/* ── STATS ────────────────────────────────────────────── */}
-      <section className="relative bg-[#1E1E1E] py-20 px-4 overflow-hidden">
+      <section className="relative bg-[#1E1E1E] py-14 md:py-20 px-6 overflow-hidden">
 
         {/* Subtle circle in stats */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center" aria-hidden>
@@ -257,7 +257,7 @@ function HomeContent({
       </section>
 
       {/* ── ABOUT ────────────────────────────────────────────── */}
-      <section className="relative py-24 px-4 overflow-hidden">
+      <section className="relative py-16 md:py-24 px-6 overflow-hidden">
 
         {/* Background circle — centered, very subtle */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center" aria-hidden>
@@ -303,7 +303,7 @@ function HomeContent({
       </section>
 
       {/* ── CTA ──────────────────────────────────────────────── */}
-      <section className="py-24 px-4 bg-secondary/40 border-t border-border">
+      <section className="py-16 md:py-24 px-6 bg-secondary/40 border-t border-border">
         <div className="max-w-xl mx-auto text-center">
           <h2 className="font-heading font-black text-4xl md:text-5xl text-foreground lowercase mb-3">
             {t('cta_title')}
