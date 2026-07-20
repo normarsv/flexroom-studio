@@ -1,6 +1,12 @@
+'use client'
+
+import { useState } from 'react'
+
 export default function AdminHelpPage() {
+  const [tab, setTab] = useState<'clients' | 'admin'>('clients')
+
   return (
-    <div className="max-w-3xl space-y-10 pb-16">
+    <div className="max-w-3xl space-y-8 pb-16">
       <div>
         <h1 className="text-2xl font-bold text-primary">Manual de Usuario</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -8,11 +14,25 @@ export default function AdminHelpPage() {
         </p>
       </div>
 
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+        {([
+          { key: 'clients', label: 'Sitio web para clientes' },
+          { key: 'admin', label: 'Panel de Administración' },
+        ] as { key: typeof tab; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+              tab === key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* ── SECCIÓN CLIENTES ─────────────────────────────── */}
-      <section className="space-y-6">
-        <h2 className="text-lg font-semibold text-primary border-b border-border pb-2">
-          Sitio web para clientes
-        </h2>
+      {tab === 'clients' && <section className="space-y-6">
 
         <ManualCard title="Cómo reservar una clase">
           <p>Los clientes reservan desde la página <strong>Clases</strong>. El proceso varía según el tipo de usuario:</p>
@@ -51,11 +71,10 @@ export default function AdminHelpPage() {
         </ManualCard>
       </section>
 
+      </section>}
+
       {/* ── SECCIÓN ADMIN ────────────────────────────────── */}
-      <section className="space-y-6">
-        <h2 className="text-lg font-semibold text-primary border-b border-border pb-2">
-          Panel de Administración
-        </h2>
+      {tab === 'admin' && <section className="space-y-6">
 
         <ManualCard title="Clases (Horario)">
           <p>Aquí se gestiona el calendario de clases que los clientes ven en el sitio.</p>
@@ -164,21 +183,21 @@ export default function AdminHelpPage() {
             </div>
           </div>
         </ManualCard>
-      </section>
 
-      {/* ── NOTAS GENERALES ──────────────────────────────── */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-primary border-b border-border pb-2">
-          Notas importantes
-        </h2>
-        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-3 text-sm text-muted-foreground">
-          <p>• <strong className="text-primary">Capacidad de clases:</strong> se define al crear o editar cada clase desde el panel de Clases. Cada clase puede tener un cupo diferente.</p>
-          <p>• <strong className="text-primary">Pagos:</strong> todos los pagos van directamente a tu cuenta de Stripe. El sitio no almacena información de tarjetas.</p>
-          <p>• <strong className="text-primary">Zona horaria:</strong> todas las fechas y horarios están en hora de México (UTC-6).</p>
-          <p>• <strong className="text-primary">Idioma:</strong> los clientes pueden cambiar entre español e inglés desde el menú de navegación.</p>
-          <p>• <strong className="text-primary">Correos automáticos:</strong> se envían desde reservas@flexroomstudio.com. Si no aparecen, revisar la carpeta de spam.</p>
+        {/* ── NOTAS GENERALES ──────────────────────────────── */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-primary border-b border-border pb-2">
+            Notas importantes
+          </h2>
+          <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-3 text-sm text-muted-foreground">
+            <p>• <strong className="text-primary">Capacidad de clases:</strong> se define al crear o editar cada clase desde el panel de Clases. Cada clase puede tener un cupo diferente.</p>
+            <p>• <strong className="text-primary">Pagos:</strong> todos los pagos van directamente a tu cuenta de Stripe. El sitio no almacena información de tarjetas.</p>
+            <p>• <strong className="text-primary">Zona horaria:</strong> todas las fechas y horarios están en hora de México (UTC-6).</p>
+            <p>• <strong className="text-primary">Idioma:</strong> los clientes pueden cambiar entre español e inglés desde el menú de navegación.</p>
+            <p>• <strong className="text-primary">Correos automáticos:</strong> se envían desde reservas@flexroomstudio.com. Si no aparecen, revisar la carpeta de spam.</p>
+          </div>
         </div>
-      </section>
+      </section>}
     </div>
   )
 }
