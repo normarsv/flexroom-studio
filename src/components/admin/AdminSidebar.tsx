@@ -13,6 +13,7 @@ import {
   faChartBar,
   faHouse,
   faTag,
+  faCircleQuestion,
 } from '@fortawesome/free-solid-svg-icons'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
@@ -25,6 +26,7 @@ const navItems: { href: string; label: string; icon: IconDefinition }[] = [
   { href: 'metrics', label: 'Métricas', icon: faChartBar },
   { href: 'coupons', label: 'Cupones', icon: faTag },
   { href: 'content', label: 'Configuración', icon: faFileLines },
+  { href: 'help', label: 'Manual', icon: faCircleQuestion },
 ]
 
 export default function AdminSidebar({ locale }: { locale: string }) {

@@ -16,7 +16,15 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users'
+type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails'
+
+interface EmailTemplate {
+  id: string
+  subject_es: string
+  subject_en: string
+  body_es: string
+  body_en: string
+}
 
 interface AdminUser {
   id: string
@@ -28,6 +36,48 @@ interface AdminUser {
 
 export default function AdminContent({ policy, homepage, settings, locale }: Props) {
   const [tab, setTab] = useState<Tab>('homepage')
+
+  // Email templates tab
+  const [emailTemplates, setEmailTemplates] = useState<Record<string, EmailTemplate>>({})
+  const [emailsLoading, setEmailsLoading] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (tab === 'emails' && Object.keys(emailTemplates).length === 0) fetchEmailTemplates()
+  }, [tab])
+
+  async function fetchEmailTemplates() {
+    setEmailsLoading(true)
+    try {
+      const res = await fetch('/api/admin/email-templates')
+      if (res.ok) {
+        const list: EmailTemplate[] = await res.json()
+        setEmailTemplates(Object.fromEntries(list.map((t) => [t.id, t])))
+      }
+    } finally {
+      setEmailsLoading(false)
+    }
+  }
+
+  function updateTemplate(id: string, field: keyof EmailTemplate, value: string) {
+    setEmailTemplates((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }))
+  }
+
+  async function handleSaveTemplate(id: string) {
+    setSavingTemplate(id)
+    try {
+      const t = emailTemplates[id]
+      const res = await fetch('/api/admin/email-templates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(t),
+      })
+      if (res.ok) toast.success('Plantilla guardada')
+      else toast.error('Error al guardar')
+    } finally {
+      setSavingTemplate(null)
+    }
+  }
 
   // Users tab
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
@@ -264,6 +314,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'homepage', label: 'Página de inicio' },
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
+          { key: 'emails', label: 'Correos' },
           { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -745,6 +796,101 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           Actualmente: si el usuario cancela con <strong>{cancellationHours}h</strong> o más de anticipación, recibe crédito para otra clase. Si cancela después, pierde la clase y el pago.
         </p>
       </div>}
+
+      {/* ── EMAIL TEMPLATES ───────────────────────────────── */}
+      {tab === 'emails' && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-primary">Plantillas de correo</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Personaliza los correos automáticos que reciben los clientes. Usa <code className="bg-secondary px-1 rounded text-xs">{'{{variable}}'}</code> para insertar datos dinámicos.
+            </p>
+          </div>
+
+          {emailsLoading ? (
+            <p className="text-sm text-muted-foreground">Cargando plantillas...</p>
+          ) : (
+            [
+              {
+                id: 'booking_confirmation',
+                title: 'Confirmación de reserva',
+                description: 'Se envía cuando un cliente reserva una clase.',
+                vars: ['{{name}}', '{{className}}', '{{date}}', '{{instructor}}', '{{duration}}'],
+              },
+              {
+                id: 'package_confirmation',
+                title: 'Confirmación de membresía',
+                description: 'Se envía cuando un cliente compra una membresía vía Stripe.',
+                vars: ['{{name}}', '{{packageName}}', '{{sessionsRemaining}}', '{{expiresAt}}'],
+              },
+            ].map(({ id, title, description, vars }) => {
+              const t = emailTemplates[id]
+              if (!t) return null
+              return (
+                <div key={id} className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
+                  <div>
+                    <h3 className="text-base font-semibold text-primary">{title}</h3>
+                    <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Variables disponibles:{' '}
+                      {vars.map((v) => (
+                        <code key={v} className="bg-secondary px-1 rounded text-xs mr-1">{v}</code>
+                      ))}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-1">Asunto (ES)</label>
+                      <input
+                        type="text"
+                        value={t.subject_es}
+                        onChange={(e) => updateTemplate(id, 'subject_es', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-1">Asunto (EN)</label>
+                      <input
+                        type="text"
+                        value={t.subject_en}
+                        onChange={(e) => updateTemplate(id, 'subject_en', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-1">Cuerpo (ES)</label>
+                      <textarea
+                        value={t.body_es}
+                        onChange={(e) => updateTemplate(id, 'body_es', e.target.value)}
+                        rows={8}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-1">Cuerpo (EN)</label>
+                      <textarea
+                        value={t.body_en}
+                        onChange={(e) => updateTemplate(id, 'body_en', e.target.value)}
+                        rows={8}
+                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => handleSaveTemplate(id)}
+                    disabled={savingTemplate === id}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {savingTemplate === id ? 'Guardando...' : 'Guardar plantilla'}
+                  </Button>
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
 
       {/* ── CANCELLATION POLICY ───────────────────────────── */}
       {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">

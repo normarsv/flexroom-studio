@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendPackageConfirmation } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -21,32 +22,47 @@ export async function POST(request: NextRequest) {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const { packageId, userId, classSessionId, couponId } = session.metadata!
+    const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
 
     const supabase = createAdminClient()
 
     if (classSessionId) {
-      // Single-session booking paid via Stripe
-      const { data: classSession } = await supabase
-        .from('class_sessions')
-        .select('spots_booked')
-        .eq('id', classSessionId)
-        .single()
+      // Idempotency check — skip if booking already exists for this user+session
+      const { data: existing } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('session_id', classSessionId)
+        .neq('status', 'cancelled')
+        .maybeSingle()
 
-      if (classSession) {
-        await supabase.from('bookings').insert({
-          user_id: userId,
-          session_id: classSessionId,
-          user_package_id: null,
-          status: 'confirmed',
-        })
+      if (!existing) {
+        // Atomically claim the spot; no-op if class is full
+        const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: classSessionId })
 
-        await supabase
-          .from('class_sessions')
-          .update({ spots_booked: classSession.spots_booked + 1 })
-          .eq('id', classSessionId)
+        if (claimed) {
+          await supabase.from('bookings').insert({
+            user_id: userId,
+            session_id: classSessionId,
+            user_package_id: null,
+            status: 'confirmed',
+          })
+        }
       }
     } else if (packageId) {
-      // Package purchase
+      // Idempotency check — skip if this payment intent was already processed
+      if (paymentIntentId) {
+        const { data: existing } = await supabase
+          .from('user_packages')
+          .select('id')
+          .eq('stripe_payment_intent_id', paymentIntentId)
+          .maybeSingle()
+
+        if (existing) {
+          return NextResponse.json({ received: true })
+        }
+      }
+
       const { data: pkg } = await supabase
         .from('packages')
         .select('*')
@@ -62,7 +78,25 @@ export async function POST(request: NextRequest) {
           package_id: packageId,
           sessions_remaining: pkg.session_count,
           expires_at: expiresAt.toISOString(),
+          stripe_payment_intent_id: paymentIntentId,
         })
+
+        // Send confirmation email
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', userId)
+          .single()
+
+        if (profile) {
+          await sendPackageConfirmation({
+            to: profile.email,
+            name: profile.full_name || profile.email,
+            packageName: pkg.name_es,
+            sessionsRemaining: pkg.session_count,
+            expiresAt: expiresAt.toISOString(),
+          }).catch(console.error)
+        }
       }
     }
 

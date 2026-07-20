@@ -46,11 +46,8 @@ export async function POST(
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Free up the spot
-  await supabase
-    .from('class_sessions')
-    .update({ spots_booked: Math.max(0, booking.session.spots_booked - 1) })
-    .eq('id', booking.session_id)
+  // Free up the spot (atomic decrement)
+  await supabase.rpc('release_session_spot', { p_session_id: booking.session_id })
 
   if (creditGranted) {
     if (booking.user_package_id) {

@@ -25,7 +25,7 @@ export default async function ComingSoonPage() {
 
   return (
     <ComingSoon
-      password={settings?.coming_soon_password || 'flexroom2026'}
+      password={settings?.coming_soon_password ?? ''}
       launchDate={settings?.coming_soon_launch_date || ''}
     />
   )

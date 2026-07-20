@@ -51,6 +51,9 @@
     "submit_request": "Submit Request",
     "request_sent": "Request sent! We'll be in touch soon.",
     "booking_confirmed": "Booking confirmed! Check your email.",
+    "error": "An error occurred. Please try again.",
+    "expires": "Expires: {date}",
+    "sessions_remaining": "{count} sessions remaining",
     "select_package": "Select membership",
     "no_active_package": "You don't have active memberships for this class type.",
     "buy_package": "Buy membership",
@@ -100,7 +103,16 @@
     "sign_up": "Create account",
     "already_have_account": "Already have an account?",
     "no_account": "Don't have an account?",
-    "guest_booking": "Book as guest"
+    "guest_booking": "Book as guest",
+    "forgot_password": "Forgot your password?",
+    "send_reset_link": "Send reset link",
+    "reset_sent": "Check your email to reset your password.",
+    "back_to_login": "Back to sign in",
+    "new_password": "New password",
+    "confirm_password": "Confirm password",
+    "update_password": "Update password",
+    "password_updated": "Password updated! Please sign in.",
+    "passwords_dont_match": "Passwords don't match"
   },
   "admin": {
     "title": "Admin Panel",

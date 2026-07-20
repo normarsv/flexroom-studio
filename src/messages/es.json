@@ -51,6 +51,9 @@
     "submit_request": "Enviar Solicitud",
     "request_sent": "¡Solicitud enviada! Te contactaremos pronto.",
     "booking_confirmed": "¡Reserva confirmada! Revisa tu correo.",
+    "error": "Ocurrió un error. Por favor intenta de nuevo.",
+    "expires": "Vence: {date}",
+    "sessions_remaining": "{count} sesiones restantes",
     "select_package": "Seleccionar membresía",
     "no_active_package": "No tienes membresías activas para este tipo de clase.",
     "buy_package": "Comprar membresía",
@@ -100,7 +103,16 @@
     "sign_up": "Crear cuenta",
     "already_have_account": "¿Ya tienes cuenta?",
     "no_account": "¿No tienes cuenta?",
-    "guest_booking": "Reservar como invitado"
+    "guest_booking": "Reservar como invitado",
+    "forgot_password": "¿Olvidaste tu contraseña?",
+    "send_reset_link": "Enviar link de recuperación",
+    "reset_sent": "Revisa tu correo para recuperar tu contraseña.",
+    "back_to_login": "Volver al inicio de sesión",
+    "new_password": "Nueva contraseña",
+    "confirm_password": "Confirmar contraseña",
+    "update_password": "Actualizar contraseña",
+    "password_updated": "¡Contraseña actualizada! Inicia sesión.",
+    "passwords_dont_match": "Las contraseñas no coinciden"
   },
   "admin": {
     "title": "Panel Admin",

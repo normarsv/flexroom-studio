@@ -62,17 +62,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'No tienes créditos disponibles' }, { status: 400 })
       }
 
+      // Atomically claim the spot before inserting the booking
+      const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+      if (!claimed) {
+        return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
+      }
+
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({ user_id: user.id, session_id: sessionId, user_package_id: null, status: 'confirmed' })
         .select().single()
 
-      if (error) return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
+      if (error) {
+        await supabase.rpc('release_session_spot', { p_session_id: sessionId })
+        return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
+      }
 
-      await Promise.all([
-        supabase.from('profiles').update({ credit_sessions: profile.credit_sessions - 1 }).eq('id', user.id),
-        supabase.from('class_sessions').update({ spots_booked: session.spots_booked + 1 }).eq('id', sessionId),
-      ])
+      await supabase.from('profiles').update({ credit_sessions: profile.credit_sessions - 1 }).eq('id', user.id)
 
       const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', user.id).single()
       if (prof) await sendBookingConfirmation({ to: prof.email, name: prof.full_name || prof.email, session }).catch(console.error)
@@ -106,6 +112,12 @@ export async function POST(request: NextRequest) {
       userPackage = pkg
     }
 
+    // Atomically claim the spot before inserting the booking
+    const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+    if (!claimed) {
+      return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
+    }
+
     // Create booking
     const { data: booking, error } = await supabase
       .from('bookings')
@@ -119,6 +131,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      await supabase.rpc('release_session_spot', { p_session_id: sessionId })
       return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
     }
 
@@ -129,12 +142,6 @@ export async function POST(request: NextRequest) {
         .update({ sessions_remaining: userPackage.sessions_remaining - 1 })
         .eq('id', userPackageId)
     }
-
-    // Increment spots_booked
-    await supabase
-      .from('class_sessions')
-      .update({ spots_booked: session.spots_booked + 1 })
-      .eq('id', sessionId)
 
     // Get user email
     const { data: profile } = await supabase
@@ -159,6 +166,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Nombre y correo son requeridos' }, { status: 400 })
   }
 
+  // Atomically claim the spot before inserting the booking
+  const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+  if (!claimed) {
+    return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
+  }
+
   const { data: booking, error } = await supabase
     .from('bookings')
     .insert({
@@ -173,13 +186,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
+    await supabase.rpc('release_session_spot', { p_session_id: sessionId })
     return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
   }
-
-  await supabase
-    .from('class_sessions')
-    .update({ spots_booked: session.spots_booked + 1 })
-    .eq('id', sessionId)
 
   await sendBookingConfirmation({
     to: guestEmail,

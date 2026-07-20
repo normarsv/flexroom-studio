@@ -12,7 +12,7 @@ export default function LoginForm({ locale }: { locale: string }) {
   const t = useTranslations('auth')
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -33,7 +33,14 @@ export default function LoginForm({ locale }: { locale: string }) {
     const supabase = createClient()
 
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/callback?next=/${locale}/reset-password`,
+        })
+        if (error) throw error
+        toast.success(t('reset_sent'))
+        setMode('login')
+      } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -109,33 +116,64 @@ export default function LoginForm({ locale }: { locale: string }) {
             required
             className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
-          <input
-            type="password"
-            placeholder={t('password')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
+          {mode !== 'forgot' && (
+            <input
+              type="password"
+              placeholder={t('password')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          )}
+          {mode === 'login' && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                className="text-xs text-muted-foreground hover:text-primary"
+              >
+                {t('forgot_password')}
+              </button>
+            </div>
+          )}
           <Button
             type="submit"
             disabled={loading}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {loading ? 'Cargando...' : mode === 'login' ? t('login_title') : t('sign_up')}
+            {loading
+              ? 'Cargando...'
+              : mode === 'login'
+              ? t('login_title')
+              : mode === 'forgot'
+              ? t('send_reset_link')
+              : t('sign_up')}
           </Button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
-          {mode === 'login' ? t('no_account') : t('already_have_account')}{' '}
-          <button
-            type="button"
-            onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-            className="text-primary font-medium hover:underline"
-          >
-            {mode === 'login' ? t('sign_up') : t('login_title')}
-          </button>
+          {mode === 'forgot' ? (
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className="text-primary font-medium hover:underline"
+            >
+              {t('back_to_login')}
+            </button>
+          ) : (
+            <>
+              {mode === 'login' ? t('no_account') : t('already_have_account')}{' '}
+              <button
+                type="button"
+                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                className="text-primary font-medium hover:underline"
+              >
+                {mode === 'login' ? t('sign_up') : t('login_title')}
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>

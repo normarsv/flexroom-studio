@@ -30,9 +30,12 @@ export async function updateSession(request: NextRequest) {
   // Protect admin routes
   const isAdminPath = pathname.includes('/admin')
   if (isAdminPath) {
+    const localeMatch = pathname.match(/^\/(es|en)\//)
+    const locale = localeMatch?.[1] ?? 'es'
+
     if (!user) {
       const url = request.nextUrl.clone()
-      url.pathname = '/es/login'
+      url.pathname = `/${locale}/login`
       return NextResponse.redirect(url)
     }
     // Check admin role
@@ -44,14 +47,14 @@ export async function updateSession(request: NextRequest) {
 
     if (!profile?.is_admin) {
       const url = request.nextUrl.clone()
-      url.pathname = '/es'
+      url.pathname = `/${locale}`
       return NextResponse.redirect(url)
     }
   }
 
   // Coming soon redirect — skip admin, login, api, auth, the page itself, and preview holders
   const hasPreviewAccess = request.cookies.get('preview_access')?.value === '1'
-  const isExcluded = hasPreviewAccess || pathname.includes('/admin') || pathname.includes('/login') || pathname.includes('/coming-soon') || pathname.includes('opengraph-image')
+  const isExcluded = hasPreviewAccess || pathname.includes('/admin') || pathname.includes('/login') || pathname.includes('/reset-password') || pathname.includes('/coming-soon') || pathname.includes('opengraph-image')
   if (!isExcluded) {
     const { data: settings } = await supabase
       .from('studio_settings')
