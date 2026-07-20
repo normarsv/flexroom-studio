@@ -47,8 +47,7 @@ export default function LoginForm({ locale }: { locale: string }) {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push(`/${locale}`)
-        router.refresh()
+        window.location.href = `/${locale}`
       }
     } catch (error: any) {
       toast.error(error.message || 'Error al iniciar sesión')
