@@ -38,16 +38,27 @@ export async function updateSession(request: NextRequest) {
       url.pathname = `/${locale}/login`
       return NextResponse.redirect(url)
     }
-    // Check admin role
+    // Check admin or coach role
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('is_admin, is_coach')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.is_admin) {
+    const isAdmin = profile?.is_admin === true
+    const isCoach = profile?.is_coach === true
+
+    if (!isAdmin && !isCoach) {
+      // Neither admin nor coach — block entirely
       const url = request.nextUrl.clone()
       url.pathname = `/${locale}`
+      return NextResponse.redirect(url)
+    }
+
+    if (!isAdmin && isCoach && !pathname.includes('/admin/schedule')) {
+      // Coach-only users can only access the schedule
+      const url = request.nextUrl.clone()
+      url.pathname = `/${locale}/admin/schedule`
       return NextResponse.redirect(url)
     }
   }

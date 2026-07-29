@@ -86,11 +86,15 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserName, setNewUserName] = useState('')
   const [newUserRole, setNewUserRole] = useState<'admin' | 'coach'>('admin')
+  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newUserPasswordConfirm, setNewUserPasswordConfirm] = useState('')
   const [addingUser, setAddingUser] = useState(false)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [editName, setEditName] = useState('')
   const [editIsAdmin, setEditIsAdmin] = useState(false)
   const [editIsCoach, setEditIsCoach] = useState(false)
+  const [editPassword, setEditPassword] = useState('')
+  const [editPasswordConfirm, setEditPasswordConfirm] = useState('')
   const [savingUser, setSavingUser] = useState(false)
 
   useEffect(() => {
@@ -110,12 +114,25 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
   async function handleAddUser(e: React.FormEvent) {
     e.preventDefault()
     if (!newUserEmail) return
+    if (newUserPassword && newUserPassword !== newUserPasswordConfirm) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    if (newUserPassword && newUserPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
     setAddingUser(true)
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newUserEmail, full_name: newUserName, role: newUserRole }),
+        body: JSON.stringify({
+          email: newUserEmail,
+          full_name: newUserName,
+          role: newUserRole,
+          password: newUserPassword || undefined,
+        }),
       })
       if (res.ok) {
         const user = await res.json()
@@ -127,6 +144,8 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
         setNewUserEmail('')
         setNewUserName('')
         setNewUserRole('admin')
+        setNewUserPassword('')
+        setNewUserPasswordConfirm('')
         toast.success('Usuario agregado')
       } else {
         const { error } = await res.json()
@@ -142,17 +161,32 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
     setEditName(u.full_name || '')
     setEditIsAdmin(u.is_admin)
     setEditIsCoach(u.is_coach)
+    setEditPassword('')
+    setEditPasswordConfirm('')
   }
 
   async function handleSaveUser(e: React.FormEvent) {
     e.preventDefault()
     if (!editingUser) return
+    if (editPassword && editPassword !== editPasswordConfirm) {
+      toast.error('Las contraseñas no coinciden')
+      return
+    }
+    if (editPassword && editPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
     setSavingUser(true)
     try {
       const res = await fetch(`/api/admin/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: editName, is_admin: editIsAdmin, is_coach: editIsCoach }),
+        body: JSON.stringify({
+          full_name: editName,
+          is_admin: editIsAdmin,
+          is_coach: editIsCoach,
+          password: editPassword || undefined,
+        }),
       })
       if (res.ok) {
         const updated = await res.json()
@@ -699,6 +733,28 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Contraseña</label>
+                  <input
+                    type="password"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                {newUserPassword && (
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Confirmar contraseña</label>
+                    <input
+                      type="password"
+                      value={newUserPasswordConfirm}
+                      onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
+                      placeholder="Repite la contraseña"
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                )}
                 <div className="flex gap-2 pt-1">
                   <button type="button" onClick={() => setShowAddUser(false)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
                   <button type="submit" disabled={addingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
@@ -743,6 +799,28 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                     </button>
                   </div>
                 </div>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Nueva contraseña <span className="text-muted-foreground font-normal">(opcional)</span></label>
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Dejar vacío para no cambiar"
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                {editPassword && (
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Confirmar contraseña</label>
+                    <input
+                      type="password"
+                      value={editPasswordConfirm}
+                      onChange={(e) => setEditPasswordConfirm(e.target.value)}
+                      placeholder="Repite la contraseña"
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                )}
                 <div className="flex gap-2 pt-1">
                   <button type="button" onClick={() => setEditingUser(null)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
                   <button type="submit" disabled={savingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">

@@ -26,6 +26,10 @@ export interface ClassSession {
   status: 'scheduled' | 'cancelled'
   is_recurring: boolean
   recurring_template_id: string | null
+  is_special: boolean
+  event_title: string | null
+  event_description: string | null
+  event_type_label: string | null
   created_at: string
 }
 

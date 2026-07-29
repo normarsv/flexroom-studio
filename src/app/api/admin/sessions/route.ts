@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { date, start_time, duration_minutes, class_type, instructor_id, capacity } = body
+  const { date, start_time, duration_minutes, class_type, instructor_id, capacity, is_special, event_title, event_description, event_type_label } = body
 
   const { data, error } = await supabase
     .from('class_sessions')
@@ -24,11 +24,15 @@ export async function POST(request: NextRequest) {
       start_time,
       duration_minutes: duration_minutes || 50,
       class_type,
-      instructor_id,
+      instructor_id: instructor_id || null,
       capacity: capacity || 5,
       spots_booked: 0,
       status: 'scheduled',
       is_recurring: false,
+      is_special: is_special || false,
+      event_title: is_special ? (event_title || null) : null,
+      event_description: is_special ? (event_description || null) : null,
+      event_type_label: is_special ? (event_type_label || null) : null,
     })
     .select()
     .single()

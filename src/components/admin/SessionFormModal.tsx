@@ -14,9 +14,10 @@ interface Props {
   locale: string
   onClose: () => void
   onSaved: () => void
+  defaultSpecial?: boolean
 }
 
-export default function SessionFormModal({ session, instructors, locale, onClose, onSaved }: Props) {
+export default function SessionFormModal({ session, instructors, locale, onClose, onSaved, defaultSpecial = false }: Props) {
   const isNew = !session
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -26,6 +27,10 @@ export default function SessionFormModal({ session, instructors, locale, onClose
     class_type: session?.class_type || 'funcional' as ClassType,
     instructor_id: session?.instructor_id || instructors[0]?.id || '',
     capacity: session?.capacity || 5,
+    is_special: session?.is_special || defaultSpecial,
+    event_title: session?.event_title || '',
+    event_description: session?.event_description || '',
+    event_type_label: session?.event_type_label || '',
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -61,6 +66,58 @@ export default function SessionFormModal({ session, instructors, locale, onClose
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Special event toggle */}
+          <button
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, is_special: !f.is_special }))}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors text-sm font-medium ${
+              form.is_special
+                ? 'border-[#F4EF71] bg-[#F4EF71]/15 text-primary'
+                : 'border-border bg-secondary/40 text-muted-foreground hover:border-primary/30'
+            }`}
+          >
+            <span>✨ Evento especial</span>
+            <span className={`w-9 h-5 rounded-full transition-colors relative ${form.is_special ? 'bg-primary' : 'bg-border'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.is_special ? 'left-4' : 'left-0.5'}`} />
+            </span>
+          </button>
+
+          {/* Special event fields */}
+          {form.is_special && (
+            <div className="space-y-3 p-4 rounded-xl bg-[#F4EF71]/10 border border-[#F4EF71]/40">
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Nombre del evento *</label>
+                <input
+                  required={form.is_special}
+                  value={form.event_title}
+                  onChange={(e) => setForm((f) => ({ ...f, event_title: e.target.value }))}
+                  placeholder="Ej: Taller de Pilates con invitada especial"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Tipo de evento (opcional)</label>
+                <input
+                  value={form.event_type_label}
+                  onChange={(e) => setForm((f) => ({ ...f, event_type_label: e.target.value }))}
+                  placeholder="Ej: Taller, Retiro, Masterclass, Clase abierta..."
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Descripción (opcional)</label>
+                <textarea
+                  rows={3}
+                  value={form.event_description}
+                  onChange={(e) => setForm((f) => ({ ...f, event_description: e.target.value }))}
+                  placeholder="Describe el evento, qué incluye, qué traer..."
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white resize-none"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-primary block mb-1">Fecha</label>

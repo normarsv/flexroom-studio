@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClock, faUsers, faChevronRight, faCircleCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import { ClassSession, ClassType, UserPackage } from '@/types'
 import { CLASS_TYPE_LABELS, CLASS_TYPE_COLORS } from '@/lib/constants'
 import BookingModal from './BookingModal'
@@ -19,16 +20,42 @@ interface Props {
   userId: string | null
   userPackages: UserPackage[]
   bookedSessionIds: string[]
+  waitlistedSessionIds: string[]
   bookingSuccess: boolean
   credits: { id: string; class_type: string }[]
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, bookingSuccess, credits }: Props) {
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits }: Props) {
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const router = useRouter()
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null)
   const [showRequest, setShowRequest] = useState(false)
+  const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null)
+  const [localWaitlisted, setLocalWaitlisted] = useState<string[]>(waitlistedSessionIds)
+
+  async function handleJoinWaitlist(session: ClassSession) {
+    if (!userId) { setSelectedSession(session); return }
+    setJoiningWaitlist(session.id)
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, joinWaitlist: true }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLocalWaitlisted((prev) => [...prev, session.id])
+        toast.success(locale === 'es' ? `Estás en la lista de espera (posición ${data.position})` : `You're on the waitlist (position ${data.position})`)
+      } else {
+        toast.error(data.error || 'Error al unirse a la lista')
+      }
+    } catch {
+      toast.error('Error al unirse a la lista')
+    } finally {
+      setJoiningWaitlist(null)
+    }
+  }
   const [filterType, setFilterType] = useState<ClassType | 'all'>('all')
   const [showSuccess, setShowSuccess] = useState(bookingSuccess)
   const stripRef = useRef<HTMLDivElement>(null)
@@ -54,10 +81,14 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
     active?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [selectedDate])
 
+  const [filterSpecial, setFilterSpecial] = useState(false)
+  const specialEvents = sessions.filter((s) => (s as any).is_special)
   const allDaySessions = sessionsByDate[selectedDate] ?? []
-  const daySessions = filterType === 'all'
-    ? allDaySessions
-    : allDaySessions.filter((s) => s.class_type === filterType)
+  const daySessions = filterSpecial
+    ? allDaySessions.filter((s) => (s as any).is_special)
+    : filterType === 'all'
+      ? allDaySessions
+      : allDaySessions.filter((s) => s.class_type === filterType)
 
   // Formatted heading for the selected date
   const selectedDateObj = selectedDate ? parseISO(selectedDate) : null
@@ -74,6 +105,107 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
         <h1 className="font-heading font-extrabold text-3xl text-foreground">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
       </div>
+
+      {/* ── SPECIAL EVENTS BANNER ────────────────────────── */}
+      {specialEvents.length > 0 && (
+        <div className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+            ✨ {locale === 'es' ? 'Eventos especiales' : 'Special events'}
+          </p>
+          <div className="flex flex-col gap-3">
+            {specialEvents.map((event) => {
+              const spotsLeft = event.capacity - event.spots_booked
+              const isFull = spotsLeft <= 0
+              const sessionDateTime = new Date(`${event.date}T${event.start_time}`)
+              const isPast = sessionDateTime < new Date()
+              const isBooked = bookedSessionIds.includes(event.id)
+              const eventTitle = (event as any).event_title as string | null
+              const eventDescription = (event as any).event_description as string | null
+              const eventTypeLabel = (event as any).event_type_label as string | null
+              const dateFormatted = format(parseISO(event.date), "EEEE d 'de' MMMM", { locale: dateLocale })
+              const [h, m] = event.start_time.split(':').map(Number)
+              const ampm = h >= 12 ? 'pm' : 'am'
+              const timeDisplay = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
+
+              return (
+                <div
+                  key={event.id}
+                  className={`rounded-2xl border-2 border-[#F4EF71] bg-gradient-to-br from-[#F4EF71]/20 to-[#F4EF71]/5 p-5 flex flex-col sm:flex-row sm:items-center gap-4 ${isPast ? 'opacity-50' : ''}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#F4EF71] bg-[#F4EF71]/50 text-[#1E1E1E]">
+                        ✨ {eventTypeLabel || (locale === 'es' ? 'Evento especial' : 'Special event')}
+                      </span>
+                    </div>
+                    <p className="font-heading font-extrabold text-xl text-foreground leading-tight">
+                      {eventTitle || (locale === 'es' ? 'Evento especial' : 'Special event')}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1 capitalize">
+                      {dateFormatted} · {timeDisplay} · {event.duration_minutes}min
+                    </p>
+                    {eventDescription && (
+                      <p className="text-sm text-foreground/70 mt-2 leading-relaxed">{eventDescription}</p>
+                    )}
+                    {!isFull && spotsLeft <= 5 && !isPast && (
+                      <p className="text-xs font-medium text-amber-600 mt-2">
+                        {locale === 'es'
+                          ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'} disponible${spotsLeft === 1 ? '' : 's'}!`
+                          : `Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!`}
+                      </p>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {(() => {
+                      const isEventBooked = bookedSessionIds.includes(event.id)
+                      const isEventWaitlisted = localWaitlisted.includes(event.id)
+                      if (isEventBooked) return (
+                        <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4EF71]/60 border border-[#F4EF71]">
+                          <FontAwesomeIcon icon={faCircleCheck} className="w-4 h-4 text-[#1E1E1E]" />
+                          <span className="text-sm font-semibold text-[#1E1E1E]">
+                            {locale === 'es' ? 'Reservada' : 'Booked'}
+                          </span>
+                        </div>
+                      )
+                      if (isEventWaitlisted) return (
+                        <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-muted border border-border">
+                          <span className="text-sm font-semibold text-muted-foreground">
+                            {locale === 'es' ? 'En lista de espera' : 'On waitlist'}
+                          </span>
+                        </div>
+                      )
+                      if (isPast) return (
+                        <Button disabled className="rounded-xl disabled:opacity-30">
+                          {locale === 'es' ? 'Terminada' : 'Ended'}
+                        </Button>
+                      )
+                      if (isFull) return (
+                        <Button
+                          disabled={joiningWaitlist === event.id}
+                          onClick={() => handleJoinWaitlist(event)}
+                          className="rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-50"
+                        >
+                          {joiningWaitlist === event.id
+                            ? (locale === 'es' ? 'Uniendo...' : 'Joining...')
+                            : (locale === 'es' ? 'Lista de espera' : 'Join waitlist')}
+                        </Button>
+                      )
+                      return (
+                        <Button
+                          onClick={() => { setSelectedDate(event.date); setSelectedSession(event) }}
+                          className="rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 gap-1.5"
+                        >
+                          {t('book')}<FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" />
+                        </Button>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── BOOKING SUCCESS BANNER ────────────────────────── */}
       {showSuccess && (
@@ -150,9 +282,9 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
       {/* ── CLASS TYPE FILTER ─────────────────────────────── */}
       <div className="flex gap-2 flex-wrap mb-5">
         <button
-          onClick={() => setFilterType('all')}
+          onClick={() => { setFilterType('all'); setFilterSpecial(false) }}
           className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
-            ${filterType === 'all'
+            ${filterType === 'all' && !filterSpecial
               ? 'bg-[#1E1E1E] border-[#1E1E1E] text-white'
               : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
             }`}
@@ -162,9 +294,9 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
         {(Object.keys(CLASS_TYPE_LABELS) as ClassType[]).map((type) => (
           <button
             key={type}
-            onClick={() => setFilterType(type)}
+            onClick={() => { setFilterType(type); setFilterSpecial(false) }}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
-              ${filterType === type
+              ${filterType === type && !filterSpecial
                 ? 'bg-[#1E1E1E] border-[#1E1E1E] text-white'
                 : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
               }`}
@@ -172,6 +304,16 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
             {locale === 'es' ? CLASS_TYPE_LABELS[type].es : CLASS_TYPE_LABELS[type].en}
           </button>
         ))}
+        <button
+          onClick={() => setFilterSpecial((v) => !v)}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
+            ${filterSpecial
+              ? 'bg-[#F4EF71] border-[#F4EF71] text-[#1E1E1E]'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+            }`}
+        >
+          ✨ {locale === 'es' ? 'Eventos especiales' : 'Special events'}
+        </button>
       </div>
 
       {/* ── DAY HEADING + SESSION COUNT ───────────────────── */}
@@ -203,6 +345,105 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           const sessionDateTime = new Date(`${session.date}T${session.start_time}`)
           const isPast = sessionDateTime < new Date()
           const isBooked = bookedSessionIds.includes(session.id)
+          const isWaitlisted = localWaitlisted.includes(session.id)
+          const isSpecial = (session as any).is_special
+          const eventTitle = (session as any).event_title as string | null
+          const eventDescription = (session as any).event_description as string | null
+          const eventTypeLabel = (session as any).event_type_label as string | null
+
+          const timeDisplay = (() => {
+            const [h, m] = session.start_time.split(':').map(Number)
+            const ampm = h >= 12 ? 'pm' : 'am'
+            const h12 = h % 12 || 12
+            return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+          })()
+
+          if (isSpecial) {
+            return (
+              <div
+                key={session.id}
+                className={`p-4 rounded-2xl border-2 border-[#F4EF71] bg-[#F4EF71]/10
+                  transition-all duration-200 hover:shadow-md hover:-translate-y-px
+                  ${isFull || isPast ? 'opacity-50' : ''}`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Time block */}
+                  <div className="text-center min-w-[56px] shrink-0">
+                    <p className="font-heading font-bold text-base text-foreground leading-none">{timeDisplay}</p>
+                    <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mt-1">
+                      <FontAwesomeIcon icon={faClock} className="w-2.5 h-2.5" />
+                      {session.duration_minutes}m
+                    </p>
+                  </div>
+
+                  <div className="w-px h-10 bg-[#F4EF71]/60 shrink-0" />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#F4EF71] bg-[#F4EF71]/40 text-[#1E1E1E]">
+                        ✨ {eventTypeLabel || (locale === 'es' ? 'Evento especial' : 'Special event')}
+                      </span>
+                    </div>
+                    <p className="font-heading font-bold text-base text-foreground leading-tight">
+                      {eventTitle || (locale === 'es' ? 'Evento especial' : 'Special event')}
+                    </p>
+                    {eventDescription && (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{eventDescription}</p>
+                    )}
+                    {session.instructor && (
+                      <p className="text-xs text-muted-foreground mt-1">{session.instructor.name}</p>
+                    )}
+                    {(isFull || spotsLeft <= 3) && (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <FontAwesomeIcon icon={faUsers} className="w-3 h-3 text-muted-foreground" />
+                        <span className={`text-xs font-medium ${isFull ? 'text-muted-foreground' : 'text-amber-600'}`}>
+                          {isFull ? t('full') : locale === 'es' ? `¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'} disponible${spotsLeft === 1 ? '' : 's'}!` : `Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left!`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {isBooked ? (
+                    <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4EF71]/60 border border-[#F4EF71]">
+                      <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5 text-[#1E1E1E]" />
+                      <span className="text-xs font-semibold text-[#1E1E1E]">
+                        {locale === 'es' ? 'Reservada' : 'Booked'}
+                      </span>
+                    </div>
+                  ) : isWaitlisted ? (
+                    <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted border border-border">
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {locale === 'es' ? 'En lista' : 'On waitlist'}
+                      </span>
+                    </div>
+                  ) : isPast ? (
+                    <Button size="sm" disabled className="shrink-0 rounded-xl disabled:opacity-30">
+                      {locale === 'es' ? 'Terminada' : 'Ended'}
+                    </Button>
+                  ) : isFull ? (
+                    <Button
+                      size="sm"
+                      disabled={joiningWaitlist === session.id}
+                      onClick={() => handleJoinWaitlist(session)}
+                      className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-50"
+                    >
+                      {joiningWaitlist === session.id
+                        ? (locale === 'es' ? 'Uniendo...' : 'Joining...')
+                        : (locale === 'es' ? 'Lista de espera' : 'Join waitlist')}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => setSelectedSession(session)}
+                      className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 gap-1.5"
+                    >
+                      {t('book')}<FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )
+          }
 
           return (
             <div
@@ -213,14 +454,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
             >
               {/* Time block */}
               <div className="text-center min-w-[56px] shrink-0">
-                <p className="font-heading font-bold text-base text-foreground leading-none">
-                  {(() => {
-                    const [h, m] = session.start_time.split(':').map(Number)
-                    const ampm = h >= 12 ? 'pm' : 'am'
-                    const h12 = h % 12 || 12
-                    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
-                  })()}
-                </p>
+                <p className="font-heading font-bold text-base text-foreground leading-none">{timeDisplay}</p>
                 <p className="text-xs text-muted-foreground flex items-center justify-center gap-0.5 mt-1">
                   <FontAwesomeIcon icon={faClock} className="w-2.5 h-2.5" />
                   {session.duration_minutes}m
@@ -260,17 +494,34 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     {locale === 'es' ? 'Reservada' : 'Booked'}
                   </span>
                 </div>
+              ) : isWaitlisted ? (
+                <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted border border-border">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {locale === 'es' ? 'En lista' : 'On waitlist'}
+                  </span>
+                </div>
+              ) : isPast ? (
+                <Button size="sm" disabled className="shrink-0 rounded-xl disabled:opacity-30">
+                  {locale === 'es' ? 'Terminada' : 'Ended'}
+                </Button>
+              ) : isFull ? (
+                <Button
+                  size="sm"
+                  disabled={joiningWaitlist === session.id}
+                  onClick={() => handleJoinWaitlist(session)}
+                  className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-50"
+                >
+                  {joiningWaitlist === session.id
+                    ? (locale === 'es' ? 'Uniendo...' : 'Joining...')
+                    : (locale === 'es' ? 'Lista de espera' : 'Join waitlist')}
+                </Button>
               ) : (
                 <Button
                   size="sm"
-                  disabled={isFull || isPast}
-                  onClick={() => !isPast && setSelectedSession(session)}
-                  className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 disabled:opacity-30 gap-1.5"
+                  onClick={() => setSelectedSession(session)}
+                  className="shrink-0 rounded-xl bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/80 gap-1.5"
                 >
-                  {isPast
-                    ? (locale === 'es' ? 'Terminada' : 'Ended')
-                    : <>{t('book')}<FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" /></>
-                  }
+                  {t('book')}<FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" />
                 </Button>
               )}
             </div>

@@ -1,11 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendBookingConfirmation } from '@/lib/email'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
-  const { sessionId, userPackageId, useCredit, guestName, guestEmail } = body
+  const { sessionId, userPackageId, useCredit, guestName, guestEmail, joinWaitlist } = body
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -25,7 +26,38 @@ export async function POST(request: NextRequest) {
   }
 
   const spotsLeft = session.capacity - session.spots_booked
-  if (spotsLeft <= 0) {
+  const isFull = spotsLeft <= 0
+
+  // Waitlist join — only for logged-in users with a package
+  if (joinWaitlist) {
+    if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para unirte a la lista' }, { status: 401 })
+    if (!isFull) return NextResponse.json({ error: 'Aún hay lugares disponibles' }, { status: 400 })
+
+    const { data: existing } = await supabase
+      .from('bookings')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .eq('session_id', sessionId)
+      .neq('status', 'cancelled')
+      .single()
+    if (existing) return NextResponse.json({ error: existing.status === 'waitlist' ? 'Ya estás en lista de espera' : 'Ya tienes una reserva para esta clase' }, { status: 400 })
+
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .insert({ user_id: user.id, session_id: sessionId, user_package_id: userPackageId || null, status: 'waitlist' })
+      .select().single()
+    if (error) return NextResponse.json({ error: 'Error al unirse a la lista' }, { status: 500 })
+
+    // Return position in waitlist
+    const { count } = await supabase
+      .from('bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('status', 'waitlist')
+    return NextResponse.json({ booking, position: count ?? 1 })
+  }
+
+  if (isFull) {
     return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
   }
 

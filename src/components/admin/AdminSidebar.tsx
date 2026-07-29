@@ -29,18 +29,20 @@ const navItems: { href: string; label: string; icon: IconDefinition }[] = [
   { href: 'help', label: 'Manual', icon: faCircleQuestion },
 ]
 
-export default function AdminSidebar({ locale }: { locale: string }) {
+export default function AdminSidebar({ locale, isAdmin = false, isCoach = false }: { locale: string; isAdmin?: boolean; isCoach?: boolean }) {
   const pathname = usePathname()
+  const coachOnly = isCoach && !isAdmin
+  const visibleItems = coachOnly ? navItems.filter((i) => i.href === 'schedule') : navItems
 
   return (
     <aside className="w-56 bg-white border-r border-border shrink-0 flex flex-col">
       <div className="p-4 border-b border-border">
         <p className="font-bold text-primary text-sm">Flex Room</p>
-        <p className="text-xs text-muted-foreground">Admin Panel</p>
+        <p className="text-xs text-muted-foreground">{coachOnly ? 'Coach' : 'Admin Panel'}</p>
       </div>
 
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const href = `/${locale}/admin/${item.href}`
           const isActive = pathname === href || pathname.startsWith(`${href}/`)
 

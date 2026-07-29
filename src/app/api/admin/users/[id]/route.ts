@@ -22,6 +22,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('full_name' in body) updates.full_name = body.full_name
 
   const adminClient = createAdminClient()
+
   const { data, error } = await adminClient
     .from('profiles')
     .update(updates)
@@ -30,6 +31,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (body.password) {
+    const { error: pwError } = await adminClient.auth.admin.updateUserById(id, { password: body.password })
+    if (pwError) return NextResponse.json({ error: pwError.message }, { status: 500 })
+  }
+
   return NextResponse.json(data)
 }
 

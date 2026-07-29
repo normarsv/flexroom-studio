@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendWaitlistPromotion } from '@/lib/email'
 
 export async function POST(
   request: NextRequest,
@@ -46,31 +48,75 @@ export async function POST(
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Free up the spot (atomic decrement)
-  await supabase.rpc('release_session_spot', { p_session_id: booking.session_id })
-
-  if (creditGranted) {
-    if (booking.user_package_id) {
-      // Restore session to their package
-      const { data: up } = await supabase
-        .from('user_packages')
-        .select('sessions_remaining')
-        .eq('id', booking.user_package_id)
-        .single()
-
-      if (up && up.sessions_remaining !== null) {
-        await supabase
+  // Only handle credit/package refund if this was a confirmed booking (not waitlist)
+  if (booking.status === 'confirmed') {
+    if (creditGranted) {
+      if (booking.user_package_id) {
+        const { data: up } = await supabase
           .from('user_packages')
-          .update({ sessions_remaining: up.sessions_remaining + 1 })
+          .select('sessions_remaining')
           .eq('id', booking.user_package_id)
+          .single()
+
+        if (up && up.sessions_remaining !== null) {
+          await supabase
+            .from('user_packages')
+            .update({ sessions_remaining: up.sessions_remaining + 1 })
+            .eq('id', booking.user_package_id)
+        }
+      } else {
+        await supabase
+          .from('credits')
+          .insert({ user_id: user.id, class_type: booking.session.class_type })
+      }
+    }
+
+    // Try to promote the next person from the waitlist
+    const adminClient = createAdminClient()
+    const { data: next } = await adminClient
+      .from('bookings')
+      .select('id, user_id, user_package_id')
+      .eq('session_id', booking.session_id)
+      .eq('status', 'waitlist')
+      .order('booked_at', { ascending: true })
+      .limit(1)
+      .single()
+
+    if (next) {
+      // Promote to confirmed — spot stays occupied so spots_booked doesn't change
+      await adminClient.from('bookings').update({ status: 'confirmed' }).eq('id', next.id)
+
+      // Deduct from their package if they had one
+      if (next.user_package_id) {
+        const { data: up } = await adminClient
+          .from('user_packages')
+          .select('sessions_remaining')
+          .eq('id', next.user_package_id)
+          .single()
+        if (up && up.sessions_remaining !== null) {
+          await adminClient
+            .from('user_packages')
+            .update({ sessions_remaining: up.sessions_remaining - 1 })
+            .eq('id', next.user_package_id)
+        }
+      }
+
+      // Send promotion email
+      const { data: prof } = await adminClient
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', next.user_id)
+        .single()
+      if (prof) {
+        sendWaitlistPromotion({ to: prof.email, name: prof.full_name || prof.email, session: booking.session }).catch(console.error)
       }
     } else {
-      // Single-class booking — add a typed credit for this class type
-      await supabase
-        .from('credits')
-        .insert({ user_id: user.id, class_type: booking.session.class_type })
+      // No one on waitlist — release the spot
+      await supabase.rpc('release_session_spot', { p_session_id: booking.session_id })
     }
+  } else {
+    // Cancelling a waitlist booking — just release nothing, spot was never taken
   }
 
-  return NextResponse.json({ success: true, creditGranted, cancellationHoursLimit })
+  return NextResponse.json({ success: true, creditGranted: booking.status === 'confirmed' ? creditGranted : false, cancellationHoursLimit })
 }

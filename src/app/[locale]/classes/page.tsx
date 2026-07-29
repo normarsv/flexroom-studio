@@ -35,6 +35,7 @@ export default async function ClassesPage({
 
   let userPackages = null
   let bookedSessionIds: string[] = []
+  let waitlistedSessionIds: string[] = []
   let credits: { id: string; class_type: string }[] = []
 
   if (user) {
@@ -47,7 +48,7 @@ export default async function ClassesPage({
         .gt('sessions_remaining', 0),
       supabase
         .from('bookings')
-        .select('session_id')
+        .select('session_id, status')
         .eq('user_id', user.id)
         .neq('status', 'cancelled'),
       supabase
@@ -57,7 +58,8 @@ export default async function ClassesPage({
         .eq('used', false),
     ])
     userPackages = packagesRes.data
-    bookedSessionIds = (bookingsRes.data || []).map((b) => b.session_id)
+    bookedSessionIds = (bookingsRes.data || []).filter((b) => b.status === 'confirmed').map((b) => b.session_id)
+    waitlistedSessionIds = (bookingsRes.data || []).filter((b) => b.status === 'waitlist').map((b) => b.session_id)
     credits = creditsRes.data || []
   }
 
@@ -68,6 +70,7 @@ export default async function ClassesPage({
       userId={user?.id || null}
       userPackages={userPackages || []}
       bookedSessionIds={bookedSessionIds}
+      waitlistedSessionIds={waitlistedSessionIds}
       bookingSuccess={booking === 'success'}
       credits={credits}
     />

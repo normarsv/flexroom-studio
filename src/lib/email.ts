@@ -77,6 +77,21 @@ export async function sendBookingConfirmation({ to, name, session }: BookingEmai
   })
 }
 
+export async function sendWaitlistPromotion({ to, name, session }: BookingEmailParams) {
+  const sessionDate = parseISO(`${session.date}T${session.start_time}`)
+  const dateStr = format(sessionDate, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })
+  const className = (session as any).event_title || classNames[session.class_type] || session.class_type
+
+  await resend.emails.send({
+    from: 'Flex Room Studio <reservas@flexroomstudio.com>',
+    to,
+    subject: `¡Se abrió un lugar! ${className} — ${dateStr}`,
+    html: wrapInHtml(
+      `Hola ${name},\n\n¡Buenas noticias! Se liberó un lugar en ${className} el ${dateStr}.\n\nTu reserva está confirmada. ¡Te esperamos!\n\nflex room.`
+    ),
+  })
+}
+
 interface PackageEmailParams {
   to: string
   name: string

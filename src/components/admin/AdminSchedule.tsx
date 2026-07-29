@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClassSession, ClassType, Instructor, RecurringTemplate } from '@/types'
@@ -17,19 +17,39 @@ interface Props {
   instructors: Instructor[]
   templates: RecurringTemplate[]
   requests: any[]
+  events: ClassSession[]
   locale: string
+  isAdmin?: boolean
 }
 
-export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, locale }: Props) {
+export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, events: initialEvents, locale, isAdmin = false }: Props) {
   const [sessions, setSessions] = useState(initial)
   const [templates, setTemplates] = useState(initialTemplates)
   const [requestList, setRequestList] = useState(requests)
-  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests'>('upcoming')
+  const [events, setEvents] = useState(initialEvents)
+  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events'>('upcoming')
   const [editingSession, setEditingSession] = useState<ClassSession | null | 'new'>(null)
   const [generatingWeeks, setGeneratingWeeks] = useState(false)
   const [templateModal, setTemplateModal] = useState<RecurringTemplate | null | 'new'>(null)
   const [templateForm, setTemplateForm] = useState({ day_of_week: 1, start_time: '08:00', duration_minutes: 50, class_type: 'funcional' as ClassType, instructor_id: '', capacity: 5 })
   const [savingTemplate, setSavingTemplate] = useState(false)
+
+  // Attendance state
+  const [attendanceSession, setAttendanceSession] = useState<ClassSession | null>(null)
+  const [attendanceBookings, setAttendanceBookings] = useState<any[]>([])
+  const [loadingAttendance, setLoadingAttendance] = useState(false)
+  const [savingAttendance, setSavingAttendance] = useState<string | null>(null)
+
+  // Add-booking state (admin only)
+  const [showAddBooking, setShowAddBooking] = useState(false)
+  const [addBookingType, setAddBookingType] = useState<'client' | 'guest'>('client')
+  const [allClients, setAllClients] = useState<{ id: string; full_name: string | null; email: string }[]>([])
+  const [loadingClients, setLoadingClients] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid')
+  const [savingBooking, setSavingBooking] = useState(false)
 
   const sessionsByDate = sessions.reduce<Record<string, ClassSession[]>>((acc, s) => {
     if (!acc[s.date]) acc[s.date] = []
@@ -42,6 +62,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     const res = await fetch(`/api/admin/sessions/${session.id}/cancel`, { method: 'POST' })
     if (res.ok) {
       setSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'cancelled' } : s))
+      setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'cancelled' } : s))
       toast.success('Clase cancelada')
     } else {
       toast.error('Error al cancelar')
@@ -117,6 +138,82 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     }
   }
 
+  async function openAttendance(session: ClassSession) {
+    setAttendanceSession(session)
+    setLoadingAttendance(true)
+    const res = await fetch(`/api/admin/sessions/${session.id}/bookings`)
+    if (res.ok) {
+      const bookings = await res.json()
+      setAttendanceBookings(bookings)
+      // Sync spots_booked to actual confirmed booking count
+      const count = bookings.length
+      setSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, spots_booked: count } : s))
+      setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, spots_booked: count } : s))
+    } else {
+      toast.error('Error al cargar la lista')
+    }
+    setLoadingAttendance(false)
+  }
+
+  async function markAttended(bookingId: string, value: boolean | null) {
+    setSavingAttendance(bookingId)
+    const res = await fetch(`/api/admin/bookings/${bookingId}/attended`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attended: value }),
+    })
+    if (res.ok) {
+      setAttendanceBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, attended: value } : b))
+    } else {
+      toast.error('Error al guardar')
+    }
+    setSavingAttendance(null)
+  }
+
+  async function openAddBooking() {
+    setShowAddBooking(true)
+    setAddBookingType('client')
+    setSelectedClientId('')
+    setGuestName('')
+    setGuestEmail('')
+    setPaymentStatus('paid')
+    if (allClients.length === 0) {
+      setLoadingClients(true)
+      const res = await fetch('/api/admin/clients')
+      if (res.ok) setAllClients(await res.json())
+      setLoadingClients(false)
+    }
+  }
+
+  async function handleAddBooking() {
+    if (!attendanceSession) return
+    if (addBookingType === 'client' && !selectedClientId) { toast.error('Selecciona un cliente'); return }
+    if (addBookingType === 'guest' && !guestName.trim()) { toast.error('El nombre es requerido'); return }
+    setSavingBooking(true)
+    const body: any = { payment_status: paymentStatus }
+    if (addBookingType === 'client') {
+      body.user_id = selectedClientId
+    } else {
+      body.guest_name = guestName.trim()
+      if (guestEmail.trim()) body.guest_email = guestEmail.trim()
+    }
+    const res = await fetch(`/api/admin/sessions/${attendanceSession.id}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setAttendanceBookings((prev) => [...prev, data])
+      setSessions((prev) => prev.map((s) => s.id === attendanceSession.id ? { ...s, spots_booked: s.spots_booked + 1 } : s))
+      setShowAddBooking(false)
+      toast.success('Persona agregada')
+    } else {
+      toast.error(data.error || 'Error al agregar')
+    }
+    setSavingBooking(false)
+  }
+
   async function generateFromTemplates() {
     setGeneratingWeeks(true)
     const res = await fetch('/api/admin/sessions/generate', { method: 'POST' })
@@ -149,6 +246,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6 w-fit">
         {([
             { key: 'upcoming', label: 'Próximas clases' },
+            { key: 'events', label: `✨ Eventos${events.length > 0 ? ` (${events.length})` : ''}` },
             { key: 'recurring', label: 'Plantillas semanales' },
             { key: 'requests', label: `Solicitudes${requestList.filter(r => !r.acknowledged).length > 0 ? ` (${requestList.filter(r => !r.acknowledged).length})` : ''}` },
           ] as { key: typeof tab; label: string }[]).map(({ key, label }) => (
@@ -176,21 +274,34 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   const label = CLASS_TYPE_LABELS[session.class_type]
                   const color = CLASS_TYPE_COLORS[session.class_type]
                   return (
-                    <div key={session.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''}`}>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${color}`}>
-                        {label.es}
-                      </span>
+                    <div key={session.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''} ${(session as any).is_special ? 'bg-[#F4EF71]/10' : ''}`}>
+                      {(session as any).is_special ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-[#F4EF71] bg-[#F4EF71]/30 text-primary shrink-0">
+                          ✨ {(session as any).event_type_label || 'Especial'}
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${color}`}>
+                          {label.es}
+                        </span>
+                      )}
                       <span className="text-sm font-medium text-primary">{session.start_time.slice(0, 5)}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {(session as any).instructor?.name}
+                      <span className="text-sm text-muted-foreground truncate">
+                        {(session as any).is_special && (session as any).event_title
+                          ? (session as any).event_title
+                          : (session as any).instructor?.name}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {session.capacity - session.spots_booked} / {session.capacity} lugares
                       </span>
                       {session.status === 'cancelled' && (
                         <Badge variant="destructive" className="text-xs">Cancelada</Badge>
                       )}
                       <div className="ml-auto flex gap-1">
+                        {session.status !== 'cancelled' && (
+                          <Button variant="ghost" size="sm" onClick={() => openAttendance(session)} title="Tomar lista">
+                            <FontAwesomeIcon icon={faClipboardList} className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => setEditingSession(session)}>
                           <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
                         </Button>
@@ -206,6 +317,93 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'events' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Clases únicas y eventos especiales. Se muestran en la página de clases con un banner destacado.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setEditingSession('new')}
+              className="bg-primary text-primary-foreground shrink-0 ml-4"
+            >
+              <FontAwesomeIcon icon={faPlus} className="w-3.5 h-3.5 mr-1.5" />
+              Nuevo evento
+            </Button>
+          </div>
+
+          {events.length === 0 ? (
+            <div className="bg-white rounded-xl border border-border flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <span className="text-3xl">✨</span>
+              <p className="text-sm">No hay eventos especiales</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {events.map((event) => {
+                const dateFormatted = format(parseISO(event.date), "EEEE d 'de' MMMM yyyy", { locale: es })
+                const spotsLeft = event.capacity - event.spots_booked
+                const isPast = new Date(`${event.date}T${event.start_time}`) < new Date()
+                return (
+                  <div
+                    key={event.id}
+                    className={`bg-white rounded-xl border-2 ${isPast ? 'border-border opacity-60' : 'border-[#F4EF71]'} overflow-hidden`}
+                  >
+                    <div className={`px-4 py-3 flex items-start gap-3 ${isPast ? '' : 'bg-[#F4EF71]/10'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-[#F4EF71] bg-[#F4EF71]/40 text-primary">
+                            ✨ {(event as any).event_type_label || 'Especial'}
+                          </span>
+                          {event.status === 'cancelled' && (
+                            <Badge variant="destructive" className="text-xs">Cancelada</Badge>
+                          )}
+                          {isPast && <span className="text-xs text-muted-foreground">Pasado</span>}
+                        </div>
+                        <p className="font-semibold text-primary leading-tight">
+                          {(event as any).event_title || 'Evento especial'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                          {dateFormatted} · {event.start_time.slice(0, 5)} · {event.duration_minutes}min
+                        </p>
+                        {(event as any).event_description && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{(event as any).event_description}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {(event as any).instructor?.name && `${(event as any).instructor.name} · `}
+                          {event.spots_booked}/{event.capacity} reservas
+                          {spotsLeft <= 0 ? ' · Lleno' : spotsLeft <= 3 ? ` · ¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'}!` : ''}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {event.status !== 'cancelled' && (
+                          <Button variant="ghost" size="sm" onClick={() => openAttendance(event)} title="Tomar lista">
+                            <FontAwesomeIcon icon={faClipboardList} className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => setEditingSession(event)}>
+                          <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
+                        </Button>
+                        {event.status !== 'cancelled' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancel(event)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -433,11 +631,191 @@ export default function AdminSchedule({ sessions: initial, instructors, template
         </div>
       )}
 
+      {attendanceSession !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
+              <div>
+                <h2 className="font-semibold text-primary">Lista de asistencia</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {CLASS_TYPE_LABELS[attendanceSession.class_type]?.es} · {attendanceSession.start_time.slice(0, 5)} · {format(parseISO(attendanceSession.date), "d 'de' MMMM", { locale: es })}
+                </p>
+              </div>
+              <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false) }} className="text-muted-foreground hover:text-primary p-1">
+                <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-2">
+              {loadingAttendance ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
+              ) : attendanceBookings.length === 0 && !showAddBooking ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No hay personas registradas</p>
+              ) : (
+                attendanceBookings.map((booking) => {
+                  const name = booking.profile?.full_name || booking.guest_name || booking.guest_email || 'Sin nombre'
+                  const email = booking.profile?.email || booking.guest_email || ''
+                  const attended = booking.attended
+                  return (
+                    <div key={booking.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-secondary/30">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-primary truncate">{name}</p>
+                          {booking.payment_status === 'pending' && (
+                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 border border-orange-200 shrink-0">Pago pendiente</span>
+                          )}
+                          {booking.payment_status === 'paid' && (
+                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-600 border border-green-200 shrink-0">Pagado</span>
+                          )}
+                        </div>
+                        {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          disabled={savingAttendance === booking.id}
+                          onClick={() => markAttended(booking.id, attended === true ? null : true)}
+                          title="Asistió"
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            attended === true
+                              ? 'bg-green-100 text-green-600 ring-2 ring-green-400'
+                              : 'text-muted-foreground hover:bg-green-50 hover:text-green-500'
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faCircleCheck} className="w-4 h-4" />
+                        </button>
+                        <button
+                          disabled={savingAttendance === booking.id}
+                          onClick={() => markAttended(booking.id, attended === false ? null : false)}
+                          title="No asistió"
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                            attended === false
+                              ? 'bg-red-100 text-red-500 ring-2 ring-red-400'
+                              : 'text-muted-foreground hover:bg-red-50 hover:text-red-400'
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faCircleXmark} className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+
+              {/* Add booking form — admin only */}
+              {isAdmin && showAddBooking && (
+                <div className="rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <p className="text-sm font-medium text-primary">Agregar persona</p>
+
+                  {/* Client / Guest toggle */}
+                  <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+                    {(['client', 'guest'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setAddBookingType(t)}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${addBookingType === t ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
+                      >
+                        {t === 'client' ? 'Cliente registrado' : 'Invitado'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {addBookingType === 'client' ? (
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-1">Cliente</label>
+                      {loadingClients ? (
+                        <p className="text-xs text-muted-foreground">Cargando clientes...</p>
+                      ) : (
+                        <select
+                          value={selectedClientId}
+                          onChange={(e) => setSelectedClientId(e.target.value)}
+                          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="">Seleccionar cliente...</option>
+                          {allClients.map((c) => (
+                            <option key={c.id} value={c.id}>{c.full_name || c.email} {c.full_name ? `(${c.email})` : ''}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-primary block mb-1">Nombre *</label>
+                        <input
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          placeholder="Nombre completo"
+                          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-primary block mb-1">Correo (opcional)</label>
+                        <input
+                          type="email"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
+                          placeholder="correo@ejemplo.com"
+                          className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment status */}
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Pago</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPaymentStatus('paid')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white text-muted-foreground border-border hover:border-green-300'}`}
+                      >
+                        Ya pagó
+                      </button>
+                      <button
+                        onClick={() => setPaymentStatus('pending')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentStatus === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white text-muted-foreground border-border hover:border-orange-300'}`}
+                      >
+                        Pagará antes de clase
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowAddBooking(false)}>Cancelar</Button>
+                    <Button size="sm" className="flex-1 bg-primary text-primary-foreground" disabled={savingBooking} onClick={handleAddBooking}>
+                      {savingBooking ? 'Guardando...' : 'Agregar'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-border shrink-0 flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                {attendanceBookings.filter(b => b.attended === true).length} asistieron ·{' '}
+                {attendanceBookings.filter(b => b.attended === false).length} no asistieron ·{' '}
+                {attendanceBookings.filter(b => b.attended === null).length} sin marcar
+              </span>
+              <div className="flex gap-2 shrink-0">
+                {isAdmin && !showAddBooking && (
+                  <Button size="sm" variant="outline" onClick={openAddBooking}>
+                    <FontAwesomeIcon icon={faPlus} className="w-3 h-3 mr-1" />
+                    Agregar
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => { setAttendanceSession(null); setShowAddBooking(false) }}>Cerrar</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editingSession !== null && (
         <SessionFormModal
           session={editingSession === 'new' ? null : editingSession}
           instructors={instructors}
           locale={locale}
+          defaultSpecial={tab === 'events'}
           onClose={() => setEditingSession(null)}
           onSaved={() => { setEditingSession(null); window.location.reload() }}
         />

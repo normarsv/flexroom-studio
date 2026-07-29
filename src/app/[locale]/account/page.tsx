@@ -13,6 +13,10 @@ export default async function AccountPage({
 
   if (!user) redirect(`/${locale}/login`)
 
+  // Coaches go straight to the schedule panel
+  const { data: roleCheck } = await supabase.from('profiles').select('is_coach, is_admin').eq('id', user.id).single()
+  if (roleCheck?.is_coach && !roleCheck?.is_admin) redirect(`/${locale}/admin/schedule`)
+
   const now = new Date().toISOString()
 
   const [bookingsRes, packagesRes, profileRes, settingsRes, creditsRes] = await Promise.all([

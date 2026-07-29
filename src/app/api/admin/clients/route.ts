@@ -9,6 +9,21 @@ async function checkAdmin(supabase: any) {
   return profile?.is_admin === true
 }
 
+export async function GET() {
+  const supabase = await createClient()
+  if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const adminClient = createAdminClient()
+  const { data, error } = await adminClient
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('is_admin', false)
+    .order('full_name')
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data ?? [])
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
