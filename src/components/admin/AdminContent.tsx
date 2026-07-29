@@ -16,7 +16,7 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users'
+type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails'
 
 interface EmailTemplate {
   id: string
