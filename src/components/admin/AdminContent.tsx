@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faUpload, faTrash, faPencil } from '@fortawesome/free-solid-svg-icons'
 
 interface Props {
   policy: CancellationPolicy | null
@@ -16,7 +16,7 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails'
+type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users'
 
 interface EmailTemplate {
   id: string
@@ -87,6 +87,11 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
   const [newUserName, setNewUserName] = useState('')
   const [newUserRole, setNewUserRole] = useState<'admin' | 'coach'>('admin')
   const [addingUser, setAddingUser] = useState(false)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editIsAdmin, setEditIsAdmin] = useState(false)
+  const [editIsCoach, setEditIsCoach] = useState(false)
+  const [savingUser, setSavingUser] = useState(false)
 
   useEffect(() => {
     if (tab === 'users' && adminUsers.length === 0) fetchAdminUsers()
@@ -129,6 +134,37 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       }
     } finally {
       setAddingUser(false)
+    }
+  }
+
+  function openEditUser(u: AdminUser) {
+    setEditingUser(u)
+    setEditName(u.full_name || '')
+    setEditIsAdmin(u.is_admin)
+    setEditIsCoach(u.is_coach)
+  }
+
+  async function handleSaveUser(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingUser) return
+    setSavingUser(true)
+    try {
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: editName, is_admin: editIsAdmin, is_coach: editIsCoach }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setAdminUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u))
+        setEditingUser(null)
+        toast.success('Usuario actualizado')
+      } else {
+        const { error } = await res.json()
+        toast.error(error || 'Error al actualizar')
+      }
+    } finally {
+      setSavingUser(false)
     }
   }
 
@@ -314,7 +350,6 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'homepage', label: 'Página de inicio' },
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
-          { key: 'emails', label: 'Correos' },
           { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -674,6 +709,50 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
             </div>
           )}
 
+          {/* Edit user modal */}
+          {editingUser && (
+            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+              <form onSubmit={handleSaveUser} className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
+                <h3 className="font-semibold text-primary">Editar usuario</h3>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-1">Nombre completo</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nombre Apellido"
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-primary block mb-2">Roles</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditIsAdmin((v) => !v)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${editIsAdmin ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
+                    >
+                      Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditIsCoach((v) => !v)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${editIsCoach ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
+                    >
+                      Coach
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => setEditingUser(null)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
+                  <button type="submit" disabled={savingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                    {savingUser ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* Users list */}
           {usersLoading ? (
             <p className="text-sm text-muted-foreground">Cargando...</p>
@@ -695,8 +774,14 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Coach</span>
                     )}
                     <button
+                      onClick={() => openEditUser(u)}
+                      className="text-muted-foreground hover:text-primary ml-2"
+                    >
+                      <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleRemoveUser(u.id)}
-                      className="text-xs text-red-500 hover:text-red-700 ml-2"
+                      className="text-xs text-red-500 hover:text-red-700"
                     >
                       Quitar
                     </button>

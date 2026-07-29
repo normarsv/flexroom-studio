@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
 async function checkAdmin(supabase: any) {
@@ -16,31 +17,27 @@ export async function POST(
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const body = await request.json()
-  const { classType, quantity = 1 } = body
+  const { classType, quantity = 1 } = await request.json()
   if (!classType) return NextResponse.json({ error: 'Tipo de clase requerido' }, { status: 400 })
   const qty = Math.max(1, Math.min(50, parseInt(quantity, 10) || 1))
 
-  // Verify user exists
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', id)
-    .single()
+  const adminClient = createAdminClient()
 
-  if (fetchError || !profile) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
-
-  const rows = Array.from({ length: qty }, () => ({ user_id: id, class_type: classType }))
-  const { error } = await supabase.from('credits').insert(rows)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Return updated credit count for this type so the UI can update
-  const { count } = await supabase
+  // Find unused credits of this type for this user, limited to qty
+  const { data: credits, error: fetchError } = await adminClient
     .from('credits')
-    .select('*', { count: 'exact', head: true })
+    .select('id')
     .eq('user_id', id)
+    .eq('class_type', classType)
     .eq('used', false)
+    .limit(qty)
 
-  return NextResponse.json({ class_type: classType, total_credits: count ?? 0 })
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (!credits || credits.length === 0) return NextResponse.json({ error: 'No hay créditos de ese tipo para quitar' }, { status: 400 })
+
+  const ids = credits.map((c) => c.id)
+  const { error: deleteError } = await adminClient.from('credits').delete().in('id', ids)
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
+
+  return NextResponse.json({ removed: ids.length })
 }

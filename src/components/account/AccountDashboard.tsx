@@ -5,27 +5,29 @@ import { useTranslations } from 'next-intl'
 import { format, parseISO, isFuture } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCalendarDays, faBox, faCircleExclamation, faTriangleExclamation, faCircleCheck } from '@fortawesome/free-solid-svg-icons'
+import { faCalendarDays, faBox, faCircleExclamation, faTriangleExclamation, faCircleCheck, faUser } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Booking, UserPackage } from '@/types'
+import { Booking, UserPackage, ClassType } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { toast } from 'sonner'
 
 interface Props {
   bookings: (Booking & { session?: any })[]
   userPackages: UserPackage[]
-  profile: { full_name: string | null; email: string; avatar_url: string | null } | null
-  creditSessions: number
+  profile: { full_name: string | null; email: string; avatar_url: string | null; phone: string | null } | null
+  credits: { id: string; class_type: string }[]
   cancellationHoursLimit: number
   locale: string
 }
 
-export default function AccountDashboard({ bookings, userPackages, profile, creditSessions, cancellationHoursLimit, locale }: Props) {
+export default function AccountDashboard({ bookings, userPackages, profile, credits, cancellationHoursLimit, locale }: Props) {
   const t = useTranslations('account')
   const tCommon = useTranslations('common')
   const dateLocale = locale === 'es' ? es : enUS
-  const [tab, setTab] = useState<'bookings' | 'packages'>('bookings')
+  const [tab, setTab] = useState<'bookings' | 'packages' | 'details'>('bookings')
+  const [phone, setPhone] = useState(profile?.phone || '')
+  const [savingDetails, setSavingDetails] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmBooking, setConfirmBooking] = useState<{ id: string; willLose: boolean } | null>(null)
 
@@ -67,6 +69,22 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       }
     } finally {
       setCancellingId(null)
+    }
+  }
+
+  async function handleSaveDetails(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingDetails(true)
+    try {
+      const res = await fetch('/api/account/details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      })
+      if (res.ok) toast.success(locale === 'es' ? 'Datos actualizados' : 'Details updated')
+      else toast.error(locale === 'es' ? 'Error al guardar' : 'Error saving')
+    } finally {
+      setSavingDetails(false)
     }
   }
 
@@ -116,21 +134,35 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       </div>
 
       {/* Credits */}
-      {creditSessions > 0 && (
-        <div className="mb-6 flex items-center gap-3 p-4 bg-[#F4EF71]/30 border border-[#F4EF71] rounded-xl">
-          <span className="text-2xl font-black text-[#1E1E1E]">{creditSessions}</span>
-          <div>
-            <p className="font-semibold text-sm text-[#1E1E1E]">
-              {locale === 'es' ? 'Crédito(s) disponible(s)' : 'Credit(s) available'}
+      {credits.length > 0 && (() => {
+        const byType: Record<string, number> = {}
+        for (const c of credits) {
+          byType[c.class_type] = (byType[c.class_type] ?? 0) + 1
+        }
+        return (
+          <div className="mb-6 p-4 bg-[#F4EF71]/30 border border-[#F4EF71] rounded-xl">
+            <p className="font-semibold text-sm text-[#1E1E1E] mb-2">
+              {locale === 'es' ? 'Créditos disponibles' : 'Available credits'}
             </p>
-            <p className="text-xs text-[#1E1E1E]/70">
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(byType).map(([type, count]) => {
+                const label = CLASS_TYPE_LABELS[type as ClassType]
+                return (
+                  <span key={type} className="inline-flex items-center gap-1.5 bg-white/70 border border-[#F4EF71] text-[#1E1E1E] text-xs font-medium px-2.5 py-1 rounded-full">
+                    <span className="font-bold">{count}</span>
+                    {locale === 'es' ? label?.es : label?.en}
+                  </span>
+                )
+              })}
+            </div>
+            <p className="text-xs text-[#1E1E1E]/70 mt-2">
               {locale === 'es'
-                ? 'Úsalos al reservar tu próxima clase.'
-                : 'Use them when booking your next class.'}
+                ? 'Úsalos al reservar la misma clase en la que cancelaste.'
+                : 'Use them when booking the same class type you cancelled.'}
             </p>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
@@ -151,6 +183,15 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
         >
           <FontAwesomeIcon icon={faBox} className="w-4 h-4" />
           {t('my_packages')}
+        </button>
+        <button
+          onClick={() => setTab('details')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
+            tab === 'details' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
+          }`}
+        >
+          <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+          {locale === 'es' ? 'Mis datos' : 'My details'}
         </button>
       </div>
 
@@ -218,6 +259,66 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
           )}
         </div>
       )}
+      {/* Details tab */}
+      {tab === 'details' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+          <h2 className="font-semibold text-primary mb-1">
+            {locale === 'es' ? 'Mis datos' : 'My details'}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            {locale === 'es'
+              ? 'Información de contacto asociada a tu cuenta.'
+              : 'Contact information associated with your account.'}
+          </p>
+          <form onSubmit={handleSaveDetails} className="space-y-4 max-w-sm">
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">
+                {locale === 'es' ? 'Nombre' : 'Name'}
+              </label>
+              <input
+                type="text"
+                value={profile?.full_name || ''}
+                disabled
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-secondary/50 text-muted-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">
+                {locale === 'es' ? 'Correo electrónico' : 'Email'}
+              </label>
+              <input
+                type="email"
+                value={profile?.email || ''}
+                disabled
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-secondary/50 text-muted-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">
+                {locale === 'es' ? 'Teléfono' : 'Phone'}
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={locale === 'es' ? '+52 967 123 4567' : '+52 967 123 4567'}
+                required
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={savingDetails}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {savingDetails
+                ? (locale === 'es' ? 'Guardando...' : 'Saving...')
+                : (locale === 'es' ? 'Guardar' : 'Save')}
+            </Button>
+          </form>
+        </div>
+      )}
+
       {/* ── CANCEL CONFIRMATION MODAL ─────────────────────── */}
       {confirmBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -260,8 +361,8 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
                 </p>
                 <p className="text-sm font-medium text-[#1E1E1E] mb-6">
                   {locale === 'es'
-                    ? 'Recibirás 1 crédito para reservar otra clase en el futuro.'
-                    : "You'll receive 1 credit to book another class in the future."}
+                    ? 'Recibirás 1 crédito para reservar el mismo tipo de clase en el futuro.'
+                    : "You'll receive 1 credit to book the same class type in the future."}
                 </p>
               </>
             )}

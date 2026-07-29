@@ -18,11 +18,13 @@ interface Props {
   locale: string
   userId: string | null
   userPackages: UserPackage[]
-  creditSessions: number
+  credits: { id: string; class_type: string }[]
   onClose: () => void
 }
 
-export default function BookingModal({ session, locale, userId, userPackages, creditSessions, onClose }: Props) {
+export default function BookingModal({ session, locale, userId, userPackages, credits, onClose }: Props) {
+  const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
+  const creditCount = matchingCredits.length
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const [loading, setLoading] = useState(false)
@@ -177,7 +179,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
         {/* Logged in user */}
         {userId && (
           <>
-            {creditSessions > 0 && (
+            {creditCount > 0 && (
               <div className="mb-4">
                 <button
                   onClick={() => { setUseCredit(!useCredit); setSelectedPackage(null) }}
@@ -188,7 +190,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                   }`}
                 >
                   <p className="text-sm font-medium text-primary">
-                    {locale === 'es' ? `Usar crédito (${creditSessions} disponible${creditSessions > 1 ? 's' : ''})` : `Use credit (${creditSessions} available)`}
+                    {locale === 'es' ? `Usar crédito (${creditCount} disponible${creditCount > 1 ? 's' : ''})` : `Use credit (${creditCount} available)`}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {locale === 'es' ? 'Crédito de cancelación' : 'Cancellation credit'}
@@ -354,7 +356,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           <Button variant="outline" onClick={onClose} className="flex-1">
             {locale === 'es' ? 'Cancelar' : 'Cancel'}
           </Button>
-          {(!userId || useCredit || compatiblePackages.length > 0) && (
+          {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0) && (
             <Button
               onClick={handleBook}
               disabled={loading || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}

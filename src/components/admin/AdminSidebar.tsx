@@ -20,7 +20,7 @@ import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 const navItems: { href: string; label: string; icon: IconDefinition }[] = [
   { href: 'schedule', label: 'Clases', icon: faCalendarDays },
   { href: 'packages', label: 'Membresías', icon: faBox },
-  { href: 'instructors', label: 'Instructores', icon: faCircleUser },
+  { href: 'instructors', label: 'Coaches', icon: faCircleUser },
   { href: 'gallery', label: 'Galería', icon: faImage },
   { href: 'clients', label: 'Clientes', icon: faUsers },
   { href: 'metrics', label: 'Métricas', icon: faChartBar },

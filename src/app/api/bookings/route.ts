@@ -52,14 +52,19 @@ export async function POST(request: NextRequest) {
 
     // Credit booking
     if (useCredit) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('credit_sessions')
-        .eq('id', user.id)
+      // Find an unused credit for this class type
+      const { data: credit } = await supabase
+        .from('credits')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('class_type', session.class_type)
+        .eq('used', false)
+        .order('created_at', { ascending: true })
+        .limit(1)
         .single()
 
-      if (!profile || profile.credit_sessions <= 0) {
-        return NextResponse.json({ error: 'No tienes créditos disponibles' }, { status: 400 })
+      if (!credit) {
+        return NextResponse.json({ error: 'No tienes créditos disponibles para este tipo de clase' }, { status: 400 })
       }
 
       // Atomically claim the spot before inserting the booking
@@ -78,7 +83,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
       }
 
-      await supabase.from('profiles').update({ credit_sessions: profile.credit_sessions - 1 }).eq('id', user.id)
+      // Mark credit as used
+      await supabase.from('credits').update({ used: true }).eq('id', credit.id)
 
       const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', user.id).single()
       if (prof) await sendBookingConfirmation({ to: prof.email, name: prof.full_name || prof.email, session }).catch(console.error)

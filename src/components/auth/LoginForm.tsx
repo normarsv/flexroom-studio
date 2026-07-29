@@ -16,6 +16,7 @@ export default function LoginForm({ locale }: { locale: string }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
 
   async function handleGoogle() {
     const supabase = createClient()
@@ -45,7 +46,7 @@ export default function LoginForm({ locale }: { locale: string }) {
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            data: { full_name: fullName, phone },
             emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}`,
           },
         })
@@ -99,14 +100,24 @@ export default function LoginForm({ locale }: { locale: string }) {
         {/* Email form */}
         <form onSubmit={handleEmailAuth} className="space-y-3">
           {mode === 'signup' && (
-            <input
-              type="text"
-              placeholder={t('full_name')}
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <>
+              <input
+                type="text"
+                placeholder={t('full_name')}
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <input
+                type="tel"
+                placeholder={t('phone')}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </>
           )}
           <input
             type="email"

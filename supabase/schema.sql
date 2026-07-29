@@ -181,6 +181,25 @@ insert into public.cancellation_policy (content_es, content_en) values (
 );
 
 -- =============================================
+-- CREDITS (type-linked cancellation credits)
+-- =============================================
+-- NOTE: If migrating from profiles.credit_sessions, run:
+--   INSERT INTO public.credits (user_id, class_type)
+--   SELECT id, 'pilates_reformer' FROM public.profiles WHERE credit_sessions > 0;
+--   (then repeat for actual count; exact type is unknown for legacy credits)
+--   ALTER TABLE public.profiles DROP COLUMN credit_sessions;
+
+create table public.credits (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  class_type text not null,
+  used boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index on public.credits(user_id, used);
+
+-- =============================================
 -- ROW LEVEL SECURITY
 -- =============================================
 
@@ -194,6 +213,7 @@ alter table public.bookings enable row level security;
 alter table public.class_requests enable row level security;
 alter table public.gallery_images enable row level security;
 alter table public.cancellation_policy enable row level security;
+alter table public.credits enable row level security;
 
 -- Profiles: users can read their own, admins can read all
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
@@ -222,6 +242,13 @@ create policy "Users can update own bookings" on public.bookings for update usin
 -- Class requests: insert only
 create policy "Anyone can insert class requests" on public.class_requests for insert with check (true);
 create policy "Admins can view class requests" on public.class_requests for select using (
+  exists (select 1 from public.profiles where id = auth.uid() and is_admin = true)
+);
+
+-- Credits: users can read own, service role can insert/update
+create policy "Users can view own credits" on public.credits for select using (auth.uid() = user_id);
+create policy "Service role can manage credits" on public.credits for all using (true);
+create policy "Admins can view all credits" on public.credits for select using (
   exists (select 1 from public.profiles where id = auth.uid() and is_admin = true)
 );
 

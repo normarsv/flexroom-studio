@@ -100,6 +100,7 @@
     "email": "Correo electrónico",
     "password": "Contraseña",
     "full_name": "Nombre completo",
+    "phone": "Teléfono (ej. +52 967 123 4567)",
     "sign_up": "Crear cuenta",
     "already_have_account": "¿Ya tienes cuenta?",
     "no_account": "¿No tienes cuenta?",

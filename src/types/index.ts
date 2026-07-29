@@ -136,7 +136,14 @@ export interface Profile {
   full_name: string | null
   avatar_url: string | null
   is_admin: boolean
-  credit_sessions: number
+  created_at: string
+}
+
+export interface Credit {
+  id: string
+  user_id: string
+  class_type: ClassType
+  used: boolean
   created_at: string
 }
 

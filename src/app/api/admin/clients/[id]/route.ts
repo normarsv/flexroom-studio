@@ -17,7 +17,7 @@ export async function PATCH(
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { full_name, email } = await request.json()
+  const { full_name, email, phone } = await request.json()
   const adminClient = createAdminClient()
 
   // Update auth user email if changed
@@ -30,6 +30,7 @@ export async function PATCH(
   const updates: Record<string, any> = {}
   if (full_name !== undefined) updates.full_name = full_name || null
   if (email) updates.email = email
+  if (phone !== undefined) updates.phone = phone || null
 
   const { data, error } = await adminClient
     .from('profiles')

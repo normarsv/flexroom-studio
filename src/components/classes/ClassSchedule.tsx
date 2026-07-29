@@ -20,10 +20,10 @@ interface Props {
   userPackages: UserPackage[]
   bookedSessionIds: string[]
   bookingSuccess: boolean
-  creditSessions: number
+  credits: { id: string; class_type: string }[]
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, bookingSuccess, creditSessions }: Props) {
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, bookingSuccess, credits }: Props) {
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const router = useRouter()
@@ -301,7 +301,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           locale={locale}
           userId={userId}
           userPackages={userPackages}
-          creditSessions={creditSessions}
+          credits={credits}
           onClose={() => setSelectedSession(null)}
         />
       )}

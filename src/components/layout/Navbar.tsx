@@ -35,6 +35,8 @@ export default function Navbar({ locale }: { locale: string }) {
     return () => { cancelled = true }
   }, [])
 
+  if (pathname.includes('/admin')) return null
+
   const otherLocale = locale === 'es' ? 'en' : 'es'
   const switchLocale = () => {
     const segments = pathname.split('/')

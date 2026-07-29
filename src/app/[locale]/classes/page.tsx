@@ -35,10 +35,10 @@ export default async function ClassesPage({
 
   let userPackages = null
   let bookedSessionIds: string[] = []
-  let creditSessions = 0
+  let credits: { id: string; class_type: string }[] = []
 
   if (user) {
-    const [packagesRes, bookingsRes, profileRes] = await Promise.all([
+    const [packagesRes, bookingsRes, creditsRes] = await Promise.all([
       supabase
         .from('user_packages')
         .select('*, package:packages(*)')
@@ -51,14 +51,14 @@ export default async function ClassesPage({
         .eq('user_id', user.id)
         .neq('status', 'cancelled'),
       supabase
-        .from('profiles')
-        .select('credit_sessions')
-        .eq('id', user.id)
-        .single(),
+        .from('credits')
+        .select('id, class_type')
+        .eq('user_id', user.id)
+        .eq('used', false),
     ])
     userPackages = packagesRes.data
     bookedSessionIds = (bookingsRes.data || []).map((b) => b.session_id)
-    creditSessions = profileRes.data?.credit_sessions ?? 0
+    credits = creditsRes.data || []
   }
 
   return (
@@ -69,7 +69,7 @@ export default async function ClassesPage({
       userPackages={userPackages || []}
       bookedSessionIds={bookedSessionIds}
       bookingSuccess={booking === 'success'}
-      creditSessions={creditSessions}
+      credits={credits}
     />
   )
 }

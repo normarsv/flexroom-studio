@@ -65,19 +65,10 @@ export async function POST(
           .eq('id', booking.user_package_id)
       }
     } else {
-      // Single-class booking — add a credit session to profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('credit_sessions')
-        .eq('id', user.id)
-        .single()
-
-      if (profile) {
-        await supabase
-          .from('profiles')
-          .update({ credit_sessions: profile.credit_sessions + 1 })
-          .eq('id', user.id)
-      }
+      // Single-class booking — add a typed credit for this class type
+      await supabase
+        .from('credits')
+        .insert({ user_id: user.id, class_type: booking.session.class_type })
     }
   }
 

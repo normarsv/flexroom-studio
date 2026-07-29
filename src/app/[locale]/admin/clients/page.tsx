@@ -7,7 +7,7 @@ export default async function AdminClientsPage() {
   const [profilesRes, packagesRes, bookingsRes] = await Promise.all([
     supabase
       .from('profiles')
-      .select('*, user_packages(id, expires_at, sessions_remaining, package:packages(name_es))')
+      .select('*, user_packages(id, expires_at, sessions_remaining, purchased_at, package:packages(name_es, price_mxn)), credits(id, class_type)')
       .eq('is_admin', false)
       .order('created_at', { ascending: false }),
     supabase

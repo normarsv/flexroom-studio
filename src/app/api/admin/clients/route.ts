@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { full_name, email } = await request.json()
+  const { full_name, email, phone } = await request.json()
   if (!email) return NextResponse.json({ error: 'El correo es requerido' }, { status: 400 })
 
   const adminClient = createAdminClient()
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const { data: profile, error: upsertError } = await adminClient
     .from('profiles')
     .upsert(
-      { id: userId, email, full_name: full_name || null, is_admin: false, credit_sessions: 0 },
+      { id: userId, email, full_name: full_name || null, phone: phone || null, is_admin: false, credit_sessions: 0 },
       { onConflict: 'id' }
     )
     .select()
