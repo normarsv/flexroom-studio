@@ -16,7 +16,7 @@ interface Props {
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails'
+type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails' | 'station_map'
 
 interface EmailTemplate {
   id: string
@@ -308,6 +308,9 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
 
   const heroImgRef = useRef<HTMLInputElement>(null)
   const aboutImgRef = useRef<HTMLInputElement>(null)
+  const stationMapRef = useRef<HTMLInputElement>(null)
+  const [stationMapUrl, setStationMapUrl] = useState(settings?.station_map_url || '')
+  const [stationMapLoading, setStationMapLoading] = useState(false)
 
   async function uploadImage(file: File, prefix: string): Promise<string | null> {
     const supabase = createClient()
@@ -331,6 +334,28 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
     if (!file) return
     const url = await uploadImage(file, 'about')
     if (url) setAboutImageUrl(url)
+  }
+
+  async function handleStationMapUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadImage(file, 'station-map')
+    if (url) setStationMapUrl(url)
+  }
+
+  async function handleSaveStationMap() {
+    setStationMapLoading(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station_map_url: stationMapUrl || null }),
+      })
+      if (res.ok) toast.success('Imagen guardada')
+      else toast.error('Error al guardar')
+    } finally {
+      setStationMapLoading(false)
+    }
   }
 
   async function handleSaveHomepage() {
@@ -384,6 +409,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'homepage', label: 'Página de inicio' },
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
+          { key: 'station_map', label: 'Mapa de estaciones' },
           { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -958,6 +984,41 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
         <p className="text-xs text-muted-foreground mt-3">
           Actualmente: si el usuario cancela con <strong>{cancellationHours}h</strong> o más de anticipación, recibe crédito para otra clase. Si cancela después, pierde la clase y el pago.
         </p>
+      </div>}
+
+      {/* ── STATION MAP IMAGE ─────────────────────────────── */}
+      {tab === 'station_map' && <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-primary">Mapa de estaciones (Reformer)</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Sube la imagen del plano de estaciones que verán los clientes al reservar una clase de Reformer.
+          </p>
+        </div>
+        {stationMapUrl && (
+          <div className="relative w-full max-w-sm rounded-xl overflow-hidden border border-border">
+            <Image src={stationMapUrl} alt="Mapa de estaciones" width={480} height={320} className="w-full h-auto object-contain" />
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <input ref={stationMapRef} type="file" accept="image/*" className="hidden" onChange={handleStationMapUpload} />
+          <Button variant="outline" onClick={() => stationMapRef.current?.click()}>
+            {stationMapUrl ? 'Cambiar imagen' : 'Subir imagen'}
+          </Button>
+          {stationMapUrl && (
+            <Button
+              onClick={handleSaveStationMap}
+              disabled={stationMapLoading}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {stationMapLoading ? 'Guardando...' : 'Guardar'}
+            </Button>
+          )}
+        </div>
+        {stationMapUrl && (
+          <p className="text-xs text-muted-foreground">
+            Haz clic en "Guardar" después de subir una nueva imagen.
+          </p>
+        )}
       </div>}
 
       {/* ── EMAIL TEMPLATES ───────────────────────────────── */}

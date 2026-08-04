@@ -23,9 +23,11 @@ interface Props {
   waitlistedSessionIds: string[]
   bookingSuccess: boolean
   credits: { id: string; class_type: string }[]
+  takenStations: Record<string, number[]>
+  stationMapUrl: string | null
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits }: Props) {
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl }: Props) {
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const router = useRouter()
@@ -553,6 +555,8 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           userId={userId}
           userPackages={userPackages}
           credits={credits}
+          takenStations={takenStations[selectedSession.id] ?? []}
+          stationMapUrl={stationMapUrl}
           onClose={() => setSelectedSession(null)}
         />
       )}

@@ -13,16 +13,21 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+const REFORMER_TYPES = ['pilates_reformer', 'reformer_restaurativo']
+const STATION_ROWS = [[1, 2, 3, 4], [5, 6, 7, 8]]
+
 interface Props {
   session: ClassSession
   locale: string
   userId: string | null
   userPackages: UserPackage[]
   credits: { id: string; class_type: string }[]
+  takenStations: number[]
+  stationMapUrl: string | null
   onClose: () => void
 }
 
-export default function BookingModal({ session, locale, userId, userPackages, credits, onClose }: Props) {
+export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, onClose }: Props) {
   const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
   const creditCount = matchingCredits.length
   const t = useTranslations('classes')
@@ -33,6 +38,9 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const [selectedPackage, setSelectedPackage] = useState<string | null>(
     userPackages[0]?.id || null
   )
+
+  const needsStation = REFORMER_TYPES.includes(session.class_type)
+  const [station, setStation] = useState<number | null>(null)
 
   const classLabel = CLASS_TYPE_LABELS[session.class_type]
   const date = parseISO(session.date)
@@ -109,6 +117,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           classSessionId: session.id,
           locale,
           couponCode: appliedCoupon?.code,
+          station: needsStation ? station : undefined,
         }),
       })
       const data = await res.json()
@@ -133,6 +142,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           useCredit: useCredit || undefined,
           guestName: userId ? undefined : guestName,
           guestEmail: userId ? undefined : guestEmail,
+          station: needsStation ? station : undefined,
         }),
       })
 
@@ -351,6 +361,58 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           </div>
         )}
 
+        {/* Station picker — Reformer classes only */}
+        {needsStation && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-primary">
+                {locale === 'es' ? 'Elige tu estación' : 'Choose your station'}
+              </p>
+              {stationMapUrl && (
+                <a
+                  href={stationMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
+                >
+                  {locale === 'es' ? 'Ver imagen del estudio' : 'View studio map'}
+                </a>
+              )}
+            </div>
+            <div className="space-y-2">
+              {STATION_ROWS.map((row, rowIdx) => (
+                <div key={rowIdx} className="flex gap-2 justify-center">
+                  {row.map((num) => {
+                    const isTaken = takenStations.includes(num)
+                    const isSelected = station === num
+                    return (
+                      <button
+                        key={num}
+                        disabled={isTaken}
+                        onClick={() => setStation(isSelected ? null : num)}
+                        className={`w-14 h-14 rounded-full text-lg font-bold transition-all border-2 ${
+                          isTaken
+                            ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-40'
+                            : isSelected
+                              ? 'bg-primary text-primary-foreground border-primary scale-110 shadow-md'
+                              : 'bg-[#F4EF71] text-primary border-[#F4EF71] hover:border-primary hover:scale-105'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            {!station && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {locale === 'es' ? 'Selecciona una estación para continuar' : 'Select a station to continue'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1">
@@ -359,7 +421,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0) && (
             <Button
               onClick={handleBook}
-              disabled={loading || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}
+              disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading ? (locale === 'es' ? 'Reservando...' : 'Booking...') : t('book')}

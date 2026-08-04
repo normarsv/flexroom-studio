@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    const { packageId, userId, classSessionId, couponId } = session.metadata!
+    const { packageId, userId, classSessionId, couponId, station } = session.metadata!
     const paymentIntentId = typeof session.payment_intent === 'string' ? session.payment_intent : null
 
     const supabase = createAdminClient()
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
             session_id: classSessionId,
             user_package_id: null,
             status: 'confirmed',
+            station: station ? parseInt(station, 10) : null,
           })
         }
       }

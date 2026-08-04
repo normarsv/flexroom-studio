@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { classSessionId, locale, couponCode } = await request.json()
+  const { classSessionId, locale, couponCode, station } = await request.json()
 
   const { data: session } = await supabase
     .from('class_sessions')
@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
   }
   if (appliedCouponId) {
     metadata.couponId = appliedCouponId
+  }
+  if (station) {
+    metadata.station = String(station)
   }
 
   const checkoutSession = await stripe.checkout.sessions.create({

@@ -6,7 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
-  const { sessionId, userPackageId, useCredit, guestName, guestEmail, joinWaitlist } = body
+  const { sessionId, userPackageId, useCredit, guestName, guestEmail, joinWaitlist, station } = body
+
+  const REFORMER_TYPES = ['pilates_reformer', 'reformer_restaurativo']
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -67,6 +69,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esta clase ya comenzó' }, { status: 400 })
   }
 
+  // Station validation for Reformer classes
+  const needsStation = REFORMER_TYPES.includes(session.class_type)
+  if (needsStation) {
+    if (!station || station < 1 || station > 8) {
+      return NextResponse.json({ error: 'Debes seleccionar una estación válida (1–8)' }, { status: 400 })
+    }
+    const { data: stationTaken } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('station', station)
+      .eq('status', 'confirmed')
+      .maybeSingle()
+    if (stationTaken) {
+      return NextResponse.json({ error: 'Esa estación ya está ocupada' }, { status: 400 })
+    }
+  }
+
   // Logged-in user booking
   if (user) {
     // Check if already booked
@@ -107,7 +127,7 @@ export async function POST(request: NextRequest) {
 
       const { data: booking, error } = await supabase
         .from('bookings')
-        .insert({ user_id: user.id, session_id: sessionId, user_package_id: null, status: 'confirmed' })
+        .insert({ user_id: user.id, session_id: sessionId, user_package_id: null, status: 'confirmed', station: needsStation ? station : null })
         .select().single()
 
       if (error) {
@@ -164,6 +184,7 @@ export async function POST(request: NextRequest) {
         session_id: sessionId,
         user_package_id: userPackageId || null,
         status: 'confirmed',
+        station: needsStation ? station : null,
       })
       .select()
       .single()
@@ -219,6 +240,7 @@ export async function POST(request: NextRequest) {
       session_id: sessionId,
       user_package_id: null,
       status: 'confirmed',
+      station: needsStation ? station : null,
     })
     .select()
     .single()

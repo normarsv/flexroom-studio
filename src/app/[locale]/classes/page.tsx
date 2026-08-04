@@ -63,6 +63,28 @@ export default async function ClassesPage({
     credits = creditsRes.data || []
   }
 
+  // Fetch taken stations for all upcoming sessions + station map image
+  const sessionIds = (sessions || []).map((s) => s.id)
+  const takenStations: Record<string, number[]> = {}
+  if (sessionIds.length > 0) {
+    const { data: stationBookings } = await supabase
+      .from('bookings')
+      .select('session_id, station')
+      .in('session_id', sessionIds)
+      .eq('status', 'confirmed')
+      .not('station', 'is', null)
+    for (const b of stationBookings || []) {
+      if (!takenStations[b.session_id]) takenStations[b.session_id] = []
+      takenStations[b.session_id].push(b.station)
+    }
+  }
+
+  const { data: studioSettings } = await supabase
+    .from('studio_settings')
+    .select('station_map_url')
+    .eq('id', 1)
+    .single()
+
   return (
     <ClassSchedule
       sessions={sessions || []}
@@ -73,6 +95,8 @@ export default async function ClassesPage({
       waitlistedSessionIds={waitlistedSessionIds}
       bookingSuccess={booking === 'success'}
       credits={credits}
+      takenStations={takenStations}
+      stationMapUrl={studioSettings?.station_map_url ?? null}
     />
   )
 }

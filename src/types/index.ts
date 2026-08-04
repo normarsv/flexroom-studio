@@ -82,6 +82,7 @@ export interface Booking {
   status: BookingStatus
   booked_at: string
   cancelled_at: string | null
+  station: number | null
 }
 
 export interface ClassRequest {
@@ -163,6 +164,7 @@ export interface StudioSettings {
   coming_soon_enabled: boolean
   coming_soon_password: string | null
   coming_soon_launch_date: string | null
+  station_map_url: string | null
 }
 
 export interface Coupon {

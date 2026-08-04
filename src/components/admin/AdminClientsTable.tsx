@@ -13,6 +13,7 @@ import {
   faSliders,
   faCheck,
 } from '@fortawesome/free-solid-svg-icons'
+import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -107,6 +108,28 @@ export default function AdminClientsTable({
   const [newClientEmail, setNewClientEmail] = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
   const [savingClient, setSavingClient] = useState(false)
+
+  // WhatsApp compose
+  const [whatsappClient, setWhatsappClient] = useState<ClientRow | null>(null)
+  const [whatsappMessage, setWhatsappMessage] = useState('')
+
+  const WA_TEMPLATES = [
+    'Hola, te informamos que tu clase ha sido cancelada. Disculpa los inconvenientes.',
+    'Hola, hubo un cambio de horario en tu clase. Por favor contáctanos para más detalles.',
+    'Hola, te recordamos que tienes una clase próximamente. ¡Te esperamos!',
+  ]
+
+  function openWhatsapp(client: ClientRow) {
+    setWhatsappClient(client)
+    setWhatsappMessage('')
+  }
+
+  function sendWhatsapp() {
+    if (!whatsappClient?.phone || !whatsappMessage.trim()) return
+    const digits = whatsappClient.phone.replace(/\D/g, '')
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(whatsappMessage.trim())}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -464,15 +487,26 @@ export default function AdminClientsTable({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => openManage(client)}
-                      >
-                        <FontAwesomeIcon icon={faSliders} className="w-3 h-3 mr-1.5" />
-                        Gestionar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {client.phone && (
+                          <button
+                            onClick={() => openWhatsapp(client)}
+                            title="Enviar WhatsApp"
+                            className="h-7 w-7 flex items-center justify-center rounded-md border border-border text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
+                          >
+                            <FontAwesomeIcon icon={faWhatsapp} className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openManage(client)}
+                        >
+                          <FontAwesomeIcon icon={faSliders} className="w-3 h-3 mr-1.5" />
+                          Gestionar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -896,6 +930,69 @@ export default function AdminClientsTable({
                   </div>
                 )
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WHATSAPP COMPOSE MODAL ───────────────────────── */}
+      {whatsappClient && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5 text-[#25D366]" />
+                <h2 className="font-semibold text-primary">Enviar WhatsApp</h2>
+              </div>
+              <button onClick={() => setWhatsappClient(null)} className="text-muted-foreground hover:text-primary p-1">
+                <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-sm font-medium text-primary">{whatsappClient.full_name || whatsappClient.email}</p>
+                <p className="text-sm text-muted-foreground">{whatsappClient.phone}</p>
+              </div>
+
+              {/* Quick templates */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Mensajes rápidos</p>
+                {WA_TEMPLATES.map((tpl, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setWhatsappMessage(tpl)}
+                    className="w-full text-left text-xs px-3 py-2 rounded-lg border border-border hover:border-primary/40 hover:bg-secondary/50 transition-colors text-muted-foreground"
+                  >
+                    {tpl}
+                  </button>
+                ))}
+              </div>
+
+              {/* Message textarea */}
+              <div>
+                <label className="text-sm font-medium text-primary block mb-1.5">Mensaje</label>
+                <textarea
+                  rows={4}
+                  value={whatsappMessage}
+                  onChange={(e) => setWhatsappMessage(e.target.value)}
+                  placeholder="Escribe tu mensaje aquí..."
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={() => setWhatsappClient(null)}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white"
+                  disabled={!whatsappMessage.trim()}
+                  onClick={sendWhatsapp}
+                >
+                  <FontAwesomeIcon icon={faWhatsapp} className="w-3.5 h-3.5 mr-1.5" />
+                  Abrir en WhatsApp
+                </Button>
+              </div>
             </div>
           </div>
         </div>
