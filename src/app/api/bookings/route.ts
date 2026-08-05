@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
     if (!station || station < 1 || station > 8) {
       return NextResponse.json({ error: 'Debes seleccionar una estación válida (1–8)' }, { status: 400 })
     }
+    if (session.blocked_stations?.includes(station)) {
+      return NextResponse.json({ error: 'Esa estación no está disponible' }, { status: 400 })
+    }
     const { data: stationTaken } = await supabase
       .from('bookings')
       .select('id')

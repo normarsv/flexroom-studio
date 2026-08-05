@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClassSession, ClassType, Instructor, RecurringTemplate } from '@/types'
@@ -50,6 +50,13 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [guestEmail, setGuestEmail] = useState('')
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid')
   const [savingBooking, setSavingBooking] = useState(false)
+
+  // Station management (Reformer classes)
+  const REFORMER_TYPES = ['pilates_reformer', 'reformer_restaurativo']
+  const STATION_ROWS = [[1, 2, 3, 4], [5, 6, 7, 8]]
+  const [blockedStations, setBlockedStations] = useState<number[]>([])
+  const [addBookingStation, setAddBookingStation] = useState<number | null>(null)
+  const [togglingStation, setTogglingStation] = useState<number | null>(null)
 
   const sessionsByDate = sessions.reduce<Record<string, ClassSession[]>>((acc, s) => {
     if (!acc[s.date]) acc[s.date] = []
@@ -140,6 +147,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
 
   async function openAttendance(session: ClassSession) {
     setAttendanceSession(session)
+    setBlockedStations(session.blocked_stations || [])
     setLoadingAttendance(true)
     const res = await fetch(`/api/admin/sessions/${session.id}/bookings`)
     if (res.ok) {
@@ -153,6 +161,26 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       toast.error('Error al cargar la lista')
     }
     setLoadingAttendance(false)
+  }
+
+  async function handleToggleBlock(station: number) {
+    if (!attendanceSession) return
+    const isBlocked = blockedStations.includes(station)
+    setTogglingStation(station)
+    const res = await fetch(`/api/admin/sessions/${attendanceSession.id}/block-station`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ station, action: isBlocked ? 'unblock' : 'block' }),
+    })
+    if (res.ok) {
+      const { blocked_stations } = await res.json()
+      setBlockedStations(blocked_stations)
+      setSessions((prev) => prev.map((s) => s.id === attendanceSession.id ? { ...s, blocked_stations } : s))
+      setEvents((prev) => prev.map((s) => s.id === attendanceSession.id ? { ...s, blocked_stations } : s))
+    } else {
+      toast.error('Error al actualizar estación')
+    }
+    setTogglingStation(null)
   }
 
   async function markAttended(bookingId: string, value: boolean | null) {
@@ -170,8 +198,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setSavingAttendance(null)
   }
 
-  async function openAddBooking() {
+  async function openAddBooking(station?: number | null) {
     setShowAddBooking(true)
+    setAddBookingStation(station ?? null)
     setAddBookingType('client')
     setSelectedClientId('')
     setGuestName('')
@@ -189,6 +218,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     if (!attendanceSession) return
     if (addBookingType === 'client' && !selectedClientId) { toast.error('Selecciona un cliente'); return }
     if (addBookingType === 'guest' && !guestName.trim()) { toast.error('El nombre es requerido'); return }
+    if (REFORMER_TYPES.includes(attendanceSession.class_type) && !addBookingStation) { toast.error('Selecciona una estación'); return }
     setSavingBooking(true)
     const body: any = { payment_status: paymentStatus }
     if (addBookingType === 'client') {
@@ -197,6 +227,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       body.guest_name = guestName.trim()
       if (guestEmail.trim()) body.guest_email = guestEmail.trim()
     }
+    if (addBookingStation) body.station = addBookingStation
     const res = await fetch(`/api/admin/sessions/${attendanceSession.id}/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -647,6 +678,68 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             </div>
 
             <div className="overflow-y-auto flex-1 p-5 space-y-2">
+              {/* Station grid — Reformer classes only */}
+              {!loadingAttendance && REFORMER_TYPES.includes(attendanceSession.class_type) && (
+                <div className="mb-4 pb-4 border-b border-border">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Estaciones</p>
+                  <div className="space-y-2">
+                    {STATION_ROWS.map((row, rowIdx) => (
+                      <div key={rowIdx} className="flex gap-2 justify-center">
+                        {row.map((num) => {
+                          const booking = attendanceBookings.find((b) => b.station === num)
+                          const isBlocked = blockedStations.includes(num)
+                          const isBooked = !!booking
+                          const firstName = (booking?.profile?.full_name || booking?.guest_name || '')
+                            .split(' ')[0].slice(0, 8)
+
+                          return (
+                            <div key={num} className="flex flex-col items-center gap-0.5 w-14">
+                              <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                                isBlocked
+                                  ? 'bg-red-50 text-red-400 border-red-200'
+                                  : isBooked
+                                    ? 'bg-[#F4EF71] text-primary border-[#F4EF71]'
+                                    : 'bg-secondary text-muted-foreground border-border'
+                              }`}>
+                                {num}
+                              </div>
+                              <p className="text-[10px] text-center text-muted-foreground leading-tight truncate w-full px-0.5">
+                                {isBlocked ? 'Bloq.' : firstName || ''}
+                              </p>
+                              {!isBooked && (
+                                <div className="flex gap-0.5 mt-0.5">
+                                  {!isBlocked && (
+                                    <button
+                                      title="Reservar esta estación"
+                                      onClick={() => openAddBooking(num)}
+                                      className="w-5 h-5 rounded flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary transition-colors"
+                                    >
+                                      <FontAwesomeIcon icon={faPlus} className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    title={isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                    disabled={togglingStation === num}
+                                    onClick={() => handleToggleBlock(num)}
+                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                                      isBlocked
+                                        ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
+                                        : 'text-muted-foreground hover:text-red-400 hover:bg-red-50'
+                                    }`}
+                                  >
+                                    <FontAwesomeIcon icon={isBlocked ? faLockOpen : faLock} className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {loadingAttendance ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Cargando...</p>
               ) : attendanceBookings.length === 0 && !showAddBooking ? (
@@ -705,6 +798,44 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               {isAdmin && showAddBooking && (
                 <div className="rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
                   <p className="text-sm font-medium text-primary">Agregar persona</p>
+
+                  {/* Station picker — Reformer classes only */}
+                  {attendanceSession && REFORMER_TYPES.includes(attendanceSession.class_type) && (
+                    <div>
+                      <label className="text-xs font-medium text-primary block mb-2">
+                        Estación <span className="text-destructive">*</span>
+                      </label>
+                      <div className="space-y-1.5">
+                        {STATION_ROWS.map((row, rowIdx) => (
+                          <div key={rowIdx} className="flex gap-1.5 justify-center">
+                            {row.map((num) => {
+                              const isTaken = attendanceBookings.some((b) => b.station === num)
+                              const isBlocked = blockedStations.includes(num)
+                              const isSelected = addBookingStation === num
+                              const isDisabled = isTaken || isBlocked
+                              return (
+                                <button
+                                  key={num}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={() => setAddBookingStation(isSelected ? null : num)}
+                                  className={`w-10 h-10 rounded-full text-sm font-bold border-2 transition-all ${
+                                    isDisabled
+                                      ? 'bg-muted text-muted-foreground border-border opacity-40 cursor-not-allowed'
+                                      : isSelected
+                                        ? 'bg-primary text-primary-foreground border-primary scale-110 shadow-md'
+                                        : 'bg-[#F4EF71] text-primary border-[#F4EF71] hover:border-primary hover:scale-105'
+                                  }`}
+                                >
+                                  {num}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Client / Guest toggle */}
                   <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
@@ -782,7 +913,12 @@ export default function AdminSchedule({ sessions: initial, instructors, template
 
                   <div className="flex gap-2 pt-1">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowAddBooking(false)}>Cancelar</Button>
-                    <Button size="sm" className="flex-1 bg-primary text-primary-foreground" disabled={savingBooking} onClick={handleAddBooking}>
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-primary text-primary-foreground"
+                      disabled={savingBooking || !!(attendanceSession && REFORMER_TYPES.includes(attendanceSession.class_type) && !addBookingStation)}
+                      onClick={handleAddBooking}
+                    >
                       {savingBooking ? 'Guardando...' : 'Agregar'}
                     </Button>
                   </div>
@@ -798,7 +934,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               </span>
               <div className="flex gap-2 shrink-0">
                 {isAdmin && !showAddBooking && (
-                  <Button size="sm" variant="outline" onClick={openAddBooking}>
+                  <Button size="sm" variant="outline" onClick={() => openAddBooking()}>
                     <FontAwesomeIcon icon={faPlus} className="w-3 h-3 mr-1" />
                     Agregar
                   </Button>

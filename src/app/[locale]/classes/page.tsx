@@ -78,6 +78,12 @@ export default async function ClassesPage({
       takenStations[b.session_id].push(b.station)
     }
   }
+  // Also treat blocked stations as taken so customers can't book them
+  for (const s of sessions || []) {
+    if (s.blocked_stations?.length > 0) {
+      takenStations[s.id] = [...new Set([...(takenStations[s.id] ?? []), ...s.blocked_stations])]
+    }
+  }
 
   const { data: studioSettings } = await supabase
     .from('studio_settings')

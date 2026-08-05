@@ -186,6 +186,58 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           </p>
         </div>
 
+        {/* Station picker — Reformer classes only, shown first */}
+        {needsStation && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-primary">
+                {locale === 'es' ? 'Elige tu estación' : 'Choose your station'}
+              </p>
+              {stationMapUrl && (
+                <a
+                  href={stationMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
+                >
+                  {locale === 'es' ? 'Ver imagen del estudio' : 'View studio map'}
+                </a>
+              )}
+            </div>
+            <div className="space-y-2">
+              {STATION_ROWS.map((row, rowIdx) => (
+                <div key={rowIdx} className="flex gap-2 justify-center">
+                  {row.map((num) => {
+                    const isTaken = takenStations.includes(num)
+                    const isSelected = station === num
+                    return (
+                      <button
+                        key={num}
+                        disabled={isTaken}
+                        onClick={() => setStation(isSelected ? null : num)}
+                        className={`w-14 h-14 rounded-full text-lg font-bold transition-all border-2 ${
+                          isTaken
+                            ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-40'
+                            : isSelected
+                              ? 'bg-primary text-primary-foreground border-primary scale-110 shadow-md'
+                              : 'bg-[#F4EF71] text-primary border-[#F4EF71] hover:border-primary hover:scale-105'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            {!station && (
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                {locale === 'es' ? 'Selecciona una estación para continuar' : 'Select a station to continue'}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Logged in user */}
         {userId && (
           <>
@@ -249,7 +301,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                 </p>
                 <Button
                   onClick={handleBuySingle}
-                  disabled={singleLoading}
+                  disabled={singleLoading || (needsStation && !station)}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {singleLoading
@@ -358,58 +410,6 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                 .
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Station picker — Reformer classes only */}
-        {needsStation && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-medium text-primary">
-                {locale === 'es' ? 'Elige tu estación' : 'Choose your station'}
-              </p>
-              {stationMapUrl && (
-                <a
-                  href={stationMapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
-                >
-                  {locale === 'es' ? 'Ver imagen del estudio' : 'View studio map'}
-                </a>
-              )}
-            </div>
-            <div className="space-y-2">
-              {STATION_ROWS.map((row, rowIdx) => (
-                <div key={rowIdx} className="flex gap-2 justify-center">
-                  {row.map((num) => {
-                    const isTaken = takenStations.includes(num)
-                    const isSelected = station === num
-                    return (
-                      <button
-                        key={num}
-                        disabled={isTaken}
-                        onClick={() => setStation(isSelected ? null : num)}
-                        className={`w-14 h-14 rounded-full text-lg font-bold transition-all border-2 ${
-                          isTaken
-                            ? 'bg-muted text-muted-foreground border-border cursor-not-allowed opacity-40'
-                            : isSelected
-                              ? 'bg-primary text-primary-foreground border-primary scale-110 shadow-md'
-                              : 'bg-[#F4EF71] text-primary border-[#F4EF71] hover:border-primary hover:scale-105'
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-            {!station && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {locale === 'es' ? 'Selecciona una estación para continuar' : 'Select a station to continue'}
-              </p>
-            )}
           </div>
         )}
 

@@ -22,7 +22,7 @@ export async function GET(
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('bookings')
-    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, profile:profiles(full_name, email)')
+    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
     .eq('session_id', id)
     .eq('status', 'confirmed')
     .order('id')
@@ -49,7 +49,7 @@ export async function POST(
   const role = await getRole(supabase)
   if (!role || !role.isAdmin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { user_id, guest_name, guest_email, payment_status } = await request.json()
+  const { user_id, guest_name, guest_email, payment_status, station } = await request.json()
   if (!payment_status || !['paid', 'pending'].includes(payment_status)) {
     return NextResponse.json({ error: 'Estado de pago requerido' }, { status: 400 })
   }
@@ -89,11 +89,12 @@ export async function POST(
   if (user_id) row.user_id = user_id
   if (guest_name) row.guest_name = guest_name
   if (guest_email) row.guest_email = guest_email
+  if (station) row.station = station
 
   const { data: booking, error: insertError } = await adminClient
     .from('bookings')
     .insert(row)
-    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, profile:profiles(full_name, email)')
+    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
     .single()
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })

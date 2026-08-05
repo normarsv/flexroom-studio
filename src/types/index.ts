@@ -31,6 +31,7 @@ export interface ClassSession {
   event_description: string | null
   event_type_label: string | null
   created_at: string
+  blocked_stations: number[]
 }
 
 export interface RecurringTemplate {
