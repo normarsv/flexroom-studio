@@ -87,6 +87,7 @@ export default function Navbar({ locale }: { locale: string }) {
   }
 
   return (
+    <>
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
@@ -220,9 +221,11 @@ export default function Navbar({ locale }: { locale: string }) {
         )}
       </div>
 
-      {/* iOS install instructions modal */}
+    </header>
+
+      {/* iOS install instructions modal — outside <header> to avoid backdrop-filter clipping fixed position */}
       {showIOSInstructions && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4 sm:items-center">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-primary text-lg">Instalar app</h2>
@@ -254,6 +257,6 @@ export default function Navbar({ locale }: { locale: string }) {
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
