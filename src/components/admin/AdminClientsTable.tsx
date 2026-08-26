@@ -82,6 +82,8 @@ export default function AdminClientsTable({
   const [editEmail, setEditEmail] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+  const [tempPassword, setTempPassword] = useState('')
+  const [savingTempPwd, setSavingTempPwd] = useState(false)
 
   // Membresías tab
   const [editingPackage, setEditingPackage] = useState<UserPackageEntry | null>(null)
@@ -158,6 +160,7 @@ export default function AdminClientsTable({
     setRemoveCreditQty('1')
     setEditingCreditType(null)
     setEditingCreditCount('')
+    setTempPassword('')
   }
 
   function closeManage() {
@@ -186,6 +189,24 @@ export default function AdminClientsTable({
       toast.error(data.error || 'Error al actualizar')
     }
     setSavingEdit(false)
+  }
+
+  async function handleSetTempPassword() {
+    if (!managingClient || !tempPassword.trim()) return
+    setSavingTempPwd(true)
+    const res = await fetch(`/api/admin/clients/${managingClient.id}/set-temp-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: tempPassword }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      toast.success('Contraseña temporal establecida. El usuario deberá cambiarla al iniciar sesión.')
+      setTempPassword('')
+    } else {
+      toast.error(data.error || 'Error al establecer contraseña')
+    }
+    setSavingTempPwd(false)
   }
 
   async function handleDeletePackage(packageId: string) {
@@ -611,6 +632,28 @@ export default function AdminClientsTable({
                   >
                     {savingEdit ? 'Guardando...' : 'Guardar cambios'}
                   </Button>
+
+                  {/* Temp password */}
+                  <div className="border-t border-border pt-4 space-y-2">
+                    <label className="text-sm font-medium text-primary block">Contraseña temporal</label>
+                    <p className="text-xs text-muted-foreground">El usuario deberá cambiarla al iniciar sesión.</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={tempPassword}
+                        onChange={(e) => setTempPassword(e.target.value)}
+                        placeholder="Mín. 6 caracteres"
+                        className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <Button
+                        variant="outline"
+                        disabled={tempPassword.length < 6 || savingTempPwd}
+                        onClick={handleSetTempPassword}
+                      >
+                        {savingTempPwd ? 'Guardando...' : 'Establecer'}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 

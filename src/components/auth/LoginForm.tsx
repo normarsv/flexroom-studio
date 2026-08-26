@@ -53,8 +53,19 @@ export default function LoginForm({ locale }: { locale: string }) {
         if (error) throw error
         toast.success('¡Revisa tu correo para confirmar tu cuenta!')
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        if (data.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('must_change_password')
+            .eq('id', data.user.id)
+            .single()
+          if (profile?.must_change_password) {
+            window.location.href = `/${locale}/change-password`
+            return
+          }
+        }
         window.location.href = `/${locale}`
       }
     } catch (error: any) {

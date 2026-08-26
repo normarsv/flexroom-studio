@@ -90,6 +90,21 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     }
   }
 
+  async function handleDeleteEvent(event: ClassSession) {
+    const hasBookings = event.spots_booked > 0
+    const message = hasBookings
+      ? `¿Eliminar este evento permanentemente? Tiene ${event.spots_booked} reserva(s) que también se eliminarán. Esta acción no se puede deshacer.`
+      : '¿Eliminar este evento permanentemente? Esta acción no se puede deshacer.'
+    if (!confirm(message)) return
+    const res = await fetch(`/api/admin/sessions/${event.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setEvents((prev) => prev.filter((e) => e.id !== event.id))
+      toast.success('Evento eliminado')
+    } else {
+      toast.error('Error al eliminar el evento')
+    }
+  }
+
   async function handleDeleteRequest(id: string) {
     const res = await fetch(`/api/admin/class-requests/${id}`, { method: 'DELETE' })
     if (res.ok) {
@@ -424,10 +439,20 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             size="sm"
                             onClick={() => handleCancel(event)}
                             className="text-destructive hover:text-destructive"
+                            title="Cancelar evento"
                           >
                             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteEvent(event)}
+                          className="text-destructive hover:text-destructive"
+                          title="Eliminar evento permanentemente"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>
