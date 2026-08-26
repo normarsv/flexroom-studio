@@ -23,6 +23,8 @@ import { ClassType } from '@/types'
 interface BookingEntry {
   created_at: string
   status: string
+  attended: boolean | null
+  price_paid: number | null
   session: { date: string; class_type: string; start_time: string } | null
 }
 
@@ -57,7 +59,7 @@ interface PackageOption {
   validity_days: number
 }
 
-type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial'
+type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial' | 'reservas'
 
 const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
@@ -437,6 +439,7 @@ export default function AdminClientsTable({
                 <th className="text-left px-4 py-3 font-medium text-primary">Estado</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Membresías activas</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Reservas</th>
+                <th className="text-left px-4 py-3 font-medium text-primary">Total recibido</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Créditos</th>
                 <th className="text-left px-4 py-3 font-medium text-primary"></th>
               </tr>
@@ -449,6 +452,9 @@ export default function AdminClientsTable({
                 const totalBookings = client.bookings?.length ?? 0
                 const isActive = client.bookings.some((b) => new Date(b.created_at) > THIRTY_DAYS_AGO)
                 const creditCount = client.credits?.length ?? 0
+                const totalRecibido =
+                  (client.user_packages?.reduce((sum: number, up: UserPackageEntry) => sum + (up.package?.price_mxn ?? 0), 0) ?? 0) +
+                  (client.bookings?.reduce((sum: number, b: BookingEntry) => sum + (b.price_paid ?? 0), 0) ?? 0)
 
                 return (
                   <tr key={client.id} className="hover:bg-secondary/30 transition-colors">
@@ -477,6 +483,9 @@ export default function AdminClientsTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-muted-foreground">{totalBookings || '—'}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-primary">
+                      {totalRecibido > 0 ? `$${totalRecibido.toLocaleString('es-MX')}` : <span className="text-muted-foreground text-xs">—</span>}
+                    </td>
                     <td className="px-4 py-3">
                       {creditCount > 0 ? (
                         <span className="text-xs font-semibold bg-[#F4EF71]/60 text-primary px-2 py-0.5 rounded-full">
@@ -545,6 +554,7 @@ export default function AdminClientsTable({
                 { key: 'membresias', label: 'Membresías' },
                 { key: 'creditos', label: 'Créditos' },
                 { key: 'historial', label: 'Historial' },
+                { key: 'reservas', label: 'Reservas' },
               ] as { key: ManageTab; label: string }[]).map(({ key, label }) => (
                 <button
                   key={key}
@@ -845,17 +855,45 @@ export default function AdminClientsTable({
 
               {/* ── HISTORIAL ── */}
               {manageTab === 'historial' && (() => {
-                const totalSpent = managingClient.user_packages.reduce(
-                  (sum, up) => sum + (up.package?.price_mxn ?? 0), 0
-                )
+                const totalRecibido =
+                  managingClient.user_packages.reduce((sum, up) => sum + (up.package?.price_mxn ?? 0), 0) +
+                  managingClient.bookings.reduce((sum, b) => sum + (b.price_paid ?? 0), 0)
+                const today = new Date().toISOString().slice(0, 10)
+                const attended = managingClient.bookings.filter((b) => b.attended && b.session)
+                const sortedAttended = [...attended].sort((a, b) => (a.session!.date > b.session!.date ? 1 : -1))
+                const primeraAsistencia = sortedAttended[0]?.session?.date
+                const ultimaAsistencia = sortedAttended[sortedAttended.length - 1]?.session?.date
+                const proximaReserva = managingClient.bookings
+                  .filter((b) => b.status !== 'cancelled' && b.session && b.session.date >= today)
+                  .sort((a, b) => (a.session!.date > b.session!.date ? 1 : -1))[0]?.session?.date
+                const sortedPurchases = [...managingClient.user_packages].sort((a, b) => a.purchased_at.localeCompare(b.purchased_at))
+                const primeraCompra = sortedPurchases[0]?.purchased_at
+                const ultimaCompra = sortedPurchases[sortedPurchases.length - 1]?.purchased_at
+
+                const fmtDate = (iso: string | undefined) => iso
+                  ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—'
+
                 return (
                   <div className="space-y-5">
-                    {/* Total spent */}
-                    <div className="bg-[#F4EF71]/30 border border-[#F4EF71] rounded-xl p-4 flex items-center justify-between">
-                      <span className="text-sm font-medium text-primary">Total gastado</span>
-                      <span className="text-lg font-bold text-primary">
-                        ${totalSpent.toLocaleString('es-MX')} MXN
-                      </span>
+                    {/* Summary stats */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: 'Primera asistencia', value: fmtDate(primeraAsistencia) },
+                        { label: 'Última asistencia', value: fmtDate(ultimaAsistencia) },
+                        { label: 'Próxima reserva', value: fmtDate(proximaReserva) },
+                        { label: 'Primera compra', value: fmtDate(primeraCompra) },
+                        { label: 'Última compra', value: fmtDate(ultimaCompra) },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="bg-secondary/40 rounded-lg px-3 py-2.5">
+                          <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                          <p className="text-sm font-semibold text-primary">{value}</p>
+                        </div>
+                      ))}
+                      <div className="bg-[#F4EF71]/30 border border-[#F4EF71] rounded-lg px-3 py-2.5">
+                        <p className="text-xs text-muted-foreground mb-0.5">Total recibido</p>
+                        <p className="text-sm font-bold text-primary">${totalRecibido.toLocaleString('es-MX')} MXN</p>
+                      </div>
                     </div>
 
                     {/* Purchase history */}
@@ -883,50 +921,66 @@ export default function AdminClientsTable({
                         </div>
                       )}
                     </div>
+                  </div>
+                )
+              })()}
 
-                    {/* Booking history */}
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Reservas</p>
-                      {managingClient.bookings.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">Sin reservas</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {[...managingClient.bookings]
-                            .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                            .map((booking, idx) => {
-                              const session = booking.session
-                              const label = session ? CLASS_TYPE_LABELS[session.class_type as ClassType]?.es : null
-                              return (
-                                <div
-                                  key={idx}
-                                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border ${
-                                    booking.status === 'cancelled'
-                                      ? 'border-border bg-secondary/30 opacity-60'
-                                      : 'border-border bg-white'
-                                  }`}
-                                >
-                                  <div>
-                                    {session ? (
-                                      <>
-                                        <span className="font-medium text-primary">{label || session.class_type}</span>
-                                        <span className="text-muted-foreground ml-2 text-xs">
-                                          {new Date(session.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                                          {' · '}{session.start_time.slice(0, 5)}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span className="text-muted-foreground text-xs">Clase eliminada</span>
-                                    )}
-                                  </div>
-                                  {booking.status === 'cancelled' && (
-                                    <Badge variant="destructive" className="text-xs">Cancelada</Badge>
-                                  )}
-                                </div>
-                              )
-                            })}
-                        </div>
-                      )}
+              {/* ── RESERVAS ── */}
+              {manageTab === 'reservas' && (() => {
+                const sorted = [...managingClient.bookings].sort((a, b) => b.created_at.localeCompare(a.created_at))
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-primary">Reservas totales</p>
+                      <span className="text-xs font-semibold bg-secondary text-primary px-2.5 py-0.5 rounded-full">
+                        {managingClient.bookings.length}
+                      </span>
                     </div>
+                    {sorted.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">Sin reservas</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {sorted.map((booking, idx) => {
+                          const session = booking.session
+                          const label = session ? CLASS_TYPE_LABELS[session.class_type as ClassType]?.es : null
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border ${
+                                booking.status === 'cancelled'
+                                  ? 'border-border bg-secondary/30 opacity-60'
+                                  : 'border-border bg-white'
+                              }`}
+                            >
+                              <div>
+                                {session ? (
+                                  <>
+                                    <span className="font-medium text-primary">{label || session.class_type}</span>
+                                    <span className="text-muted-foreground ml-2 text-xs">
+                                      {new Date(session.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                                      {' · '}{session.start_time.slice(0, 5)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">Clase eliminada</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {booking.attended === true && (
+                                  <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Asistió</span>
+                                )}
+                                {booking.attended === false && (
+                                  <span className="text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">No asistió</span>
+                                )}
+                                {booking.status === 'cancelled' && (
+                                  <Badge variant="destructive" className="text-xs">Cancelada</Badge>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )
               })()}

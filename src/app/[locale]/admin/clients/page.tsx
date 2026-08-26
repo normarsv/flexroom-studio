@@ -17,7 +17,7 @@ export default async function AdminClientsPage() {
       .order('sort_order'),
     supabase
       .from('bookings')
-      .select('user_id, created_at, status, session:class_sessions(date, class_type, start_time)')
+      .select('user_id, created_at, status, attended, price_paid, session:class_sessions(date, class_type, start_time)')
       .not('user_id', 'is', null),
   ])
 

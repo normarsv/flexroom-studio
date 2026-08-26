@@ -41,12 +41,14 @@ export async function POST(request: NextRequest) {
         const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: classSessionId })
 
         if (claimed) {
+          const pricePaid = session.amount_total ? Math.round(session.amount_total / 100) : null
           await supabase.from('bookings').insert({
             user_id: userId,
             session_id: classSessionId,
             user_package_id: null,
             status: 'confirmed',
             station: station ? parseInt(station, 10) : null,
+            price_paid: pricePaid,
           })
         }
       }
