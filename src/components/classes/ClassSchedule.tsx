@@ -35,6 +35,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
   const [showRequest, setShowRequest] = useState(false)
   const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null)
   const [localWaitlisted, setLocalWaitlisted] = useState<string[]>(waitlistedSessionIds)
+  const [localBookedIds, setLocalBookedIds] = useState<string[]>(bookedSessionIds)
 
   async function handleJoinWaitlist(session: ClassSession) {
     if (!userId) { setSelectedSession(session); return }
@@ -120,7 +121,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
               const isFull = spotsLeft <= 0
               const sessionDateTime = new Date(`${event.date}T${event.start_time}`)
               const isPast = sessionDateTime < new Date()
-              const isBooked = bookedSessionIds.includes(event.id)
+              const isBooked = localBookedIds.includes(event.id)
               const eventTitle = (event as any).event_title as string | null
               const eventDescription = (event as any).event_description as string | null
               const eventTypeLabel = (event as any).event_type_label as string | null
@@ -159,7 +160,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                   </div>
                   <div className="shrink-0">
                     {(() => {
-                      const isEventBooked = bookedSessionIds.includes(event.id)
+                      const isEventBooked = localBookedIds.includes(event.id)
                       const isEventWaitlisted = localWaitlisted.includes(event.id)
                       if (isEventBooked) return (
                         <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#F4EF71]/60 border border-[#F4EF71]">
@@ -346,7 +347,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           const colorClass = CLASS_TYPE_COLORS[session.class_type]
           const sessionDateTime = new Date(`${session.date}T${session.start_time}`)
           const isPast = sessionDateTime < new Date()
-          const isBooked = bookedSessionIds.includes(session.id)
+          const isBooked = localBookedIds.includes(session.id)
           const isWaitlisted = localWaitlisted.includes(session.id)
           const isSpecial = (session as any).is_special
           const eventTitle = (session as any).event_title as string | null
@@ -558,6 +559,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           takenStations={takenStations[selectedSession.id] ?? []}
           stationMapUrl={stationMapUrl}
           onClose={() => setSelectedSession(null)}
+          onBook={(id) => setLocalBookedIds((prev) => [...prev, id])}
         />
       )}
       {showRequest && (

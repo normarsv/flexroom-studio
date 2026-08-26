@@ -25,9 +25,10 @@ interface Props {
   takenStations: number[]
   stationMapUrl: string | null
   onClose: () => void
+  onBook?: (sessionId: string) => void
 }
 
-export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, onClose }: Props) {
+export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, onClose, onBook }: Props) {
   const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
   const creditCount = matchingCredits.length
   const t = useTranslations('classes')
@@ -154,6 +155,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
       }
 
       toast.success(t('booking_confirmed'))
+      onBook?.(session.id)
       onClose()
     } catch {
       toast.error('Error al reservar')
