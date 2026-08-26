@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
   const { sessionId, userPackageId, useCredit, guestName, guestEmail, joinWaitlist, station } = body
 
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Atomically claim the spot before inserting the booking
-      const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+      const { data: claimed } = await adminClient.rpc('claim_session_spot', { p_session_id: sessionId })
       if (!claimed) {
         return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
       }
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
         .select().single()
 
       if (error) {
-        await supabase.rpc('release_session_spot', { p_session_id: sessionId })
+        await adminClient.rpc('release_session_spot', { p_session_id: sessionId })
         return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
       }
 
@@ -174,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Atomically claim the spot before inserting the booking
-    const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+    const { data: claimed } = await adminClient.rpc('claim_session_spot', { p_session_id: sessionId })
     if (!claimed) {
       return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
     }
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      await supabase.rpc('release_session_spot', { p_session_id: sessionId })
+      await adminClient.rpc('release_session_spot', { p_session_id: sessionId })
       return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
     }
 
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Atomically claim the spot before inserting the booking
-  const { data: claimed } = await supabase.rpc('claim_session_spot', { p_session_id: sessionId })
+  const { data: claimed } = await adminClient.rpc('claim_session_spot', { p_session_id: sessionId })
   if (!claimed) {
     return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
   }
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    await supabase.rpc('release_session_spot', { p_session_id: sessionId })
+    await adminClient.rpc('release_session_spot', { p_session_id: sessionId })
     return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
   }
 

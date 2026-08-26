@@ -117,7 +117,7 @@ export async function POST(
       }
     } else {
       // No one on waitlist — release the spot
-      await supabase.rpc('release_session_spot', { p_session_id: booking.session_id })
+      await adminClient.rpc('release_session_spot', { p_session_id: booking.session_id })
     }
   } else {
     // Cancelling a waitlist booking — just release nothing, spot was never taken
