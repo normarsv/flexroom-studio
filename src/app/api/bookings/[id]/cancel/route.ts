@@ -38,7 +38,9 @@ export async function POST(
   }
 
   const cancellationHoursLimit = settingsRes.data?.cancellation_hours_limit ?? 12
-  const sessionDateTime = new Date(`${booking.session.date}T${booking.session.start_time}`)
+  // Append Mexico City offset (UTC-6, permanent since Mexico abolished DST in 2022)
+  // Without this, Vercel's UTC servers misinterpret local class times by 6 hours
+  const sessionDateTime = new Date(`${booking.session.date}T${booking.session.start_time}-06:00`)
   const hoursUntilClass = (sessionDateTime.getTime() - Date.now()) / (1000 * 60 * 60)
   const creditGranted = hoursUntilClass >= cancellationHoursLimit
 
@@ -50,29 +52,32 @@ export async function POST(
 
   // Only handle credit/package refund if this was a confirmed booking (not waitlist)
   if (booking.status === 'confirmed') {
+    // Use admin client for all refund operations — RLS blocks users from
+    // inserting their own credits or updating their own package sessions
+    const adminClient = createAdminClient()
+
     if (creditGranted) {
       if (booking.user_package_id) {
-        const { data: up } = await supabase
+        const { data: up } = await adminClient
           .from('user_packages')
           .select('sessions_remaining')
           .eq('id', booking.user_package_id)
           .single()
 
         if (up && up.sessions_remaining !== null) {
-          await supabase
+          await adminClient
             .from('user_packages')
             .update({ sessions_remaining: up.sessions_remaining + 1 })
             .eq('id', booking.user_package_id)
         }
       } else {
-        await supabase
+        await adminClient
           .from('credits')
           .insert({ user_id: user.id, class_type: booking.session.class_type })
       }
     }
 
     // Try to promote the next person from the waitlist
-    const adminClient = createAdminClient()
     const { data: next } = await adminClient
       .from('bookings')
       .select('id, user_id, user_package_id')

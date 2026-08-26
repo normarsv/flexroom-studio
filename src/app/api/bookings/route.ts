@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No hay lugares disponibles' }, { status: 400 })
   }
 
-  // Check cancellation window (can't book less than 12h before)
-  const sessionDateTime = new Date(`${session.date}T${session.start_time}`)
+  // Append Mexico City offset (UTC-6, permanent since Mexico abolished DST in 2022)
+  const sessionDateTime = new Date(`${session.date}T${session.start_time}-06:00`)
   if (sessionDateTime <= new Date()) {
     return NextResponse.json({ error: 'Esta clase ya comenzó' }, { status: 400 })
   }
