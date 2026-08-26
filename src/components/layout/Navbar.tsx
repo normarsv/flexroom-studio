@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBars, faXmark, faGlobe } from '@fortawesome/free-solid-svg-icons'
+import { faBars, faXmark, faGlobe, faDownload } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { BRAND } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +16,33 @@ export default function Navbar({ locale }: { locale: string }) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [user, setUser] = useState<{ email?: string; isAdmin?: boolean } | null>(null)
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false)
+
+  useEffect(() => {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
+      return
+    }
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    setIsIOS(ios)
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstall = async () => {
+    if (isIOS) { setShowIOSInstructions(true); return }
+    if (!installPrompt) return
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') setIsInstalled(true)
+    setInstallPrompt(null)
+  }
+
+  const showInstallButton = !isInstalled && (installPrompt || isIOS)
 
   // Check auth on mount
   useEffect(() => {
@@ -90,6 +117,17 @@ export default function Navbar({ locale }: { locale: string }) {
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-2">
+            {showInstallButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleInstall}
+                className="gap-1.5 text-primary"
+              >
+                <FontAwesomeIcon icon={faDownload} className="w-3.5 h-3.5" />
+                Instalar app
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -149,6 +187,15 @@ export default function Navbar({ locale }: { locale: string }) {
               )
             })}
             <div className="pt-2 flex flex-col gap-2 border-t border-border">
+              {showInstallButton && (
+                <button
+                  onClick={() => { handleInstall(); setMenuOpen(false) }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary"
+                >
+                  <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                  Instalar app
+                </button>
+              )}
               <button
                 onClick={() => { switchLocale(); setMenuOpen(false) }}
                 className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground"
@@ -172,6 +219,41 @@ export default function Navbar({ locale }: { locale: string }) {
           </div>
         )}
       </div>
+
+      {/* iOS install instructions modal */}
+      {showIOSInstructions && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4 sm:items-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-primary text-lg">Instalar app</h2>
+              <button onClick={() => setShowIOSInstructions(false)} className="text-muted-foreground hover:text-primary p-1">
+                <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Sigue estos pasos para agregar flexroom a tu pantalla de inicio:</p>
+            <ol className="space-y-3">
+              <li className="flex items-start gap-3 text-sm">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</span>
+                <span className="text-primary">Toca el botón <strong>Compartir</strong> <span className="inline-block">⎙</span> en la barra de Safari (abajo o arriba según tu iPhone)</span>
+              </li>
+              <li className="flex items-start gap-3 text-sm">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</span>
+                <span className="text-primary">Desplázate y toca <strong>&quot;Agregar a pantalla de inicio&quot;</strong></span>
+              </li>
+              <li className="flex items-start gap-3 text-sm">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</span>
+                <span className="text-primary">Toca <strong>Agregar</strong> — ¡listo!</span>
+              </li>
+            </ol>
+            <button
+              onClick={() => setShowIOSInstructions(false)}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   )
 }
