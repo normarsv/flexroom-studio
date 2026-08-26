@@ -190,9 +190,15 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       })
       if (res.ok) {
         const updated = await res.json()
-        setAdminUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u))
+        if (!updated.is_admin && !updated.is_coach) {
+          // Downgraded to client — remove from this list
+          setAdminUsers((prev) => prev.filter((u) => u.id !== updated.id))
+          toast.success('Usuario movido a cliente')
+        } else {
+          setAdminUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u))
+          toast.success('Usuario actualizado')
+        }
         setEditingUser(null)
-        toast.success('Usuario actualizado')
       } else {
         const { error } = await res.json()
         toast.error(error || 'Error al actualizar')
@@ -807,23 +813,19 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-primary block mb-2">Roles</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setEditIsAdmin((v) => !v)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${editIsAdmin ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
-                    >
-                      Admin
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditIsCoach((v) => !v)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${editIsCoach ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
-                    >
-                      Coach
-                    </button>
-                  </div>
+                  <label className="text-xs font-medium text-primary block mb-1">Rol</label>
+                  <select
+                    value={editIsAdmin ? 'admin' : editIsCoach ? 'coach' : 'client'}
+                    onChange={(e) => {
+                      setEditIsAdmin(e.target.value === 'admin')
+                      setEditIsCoach(e.target.value === 'coach')
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="coach">Coach</option>
+                    <option value="client">Cliente</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-primary block mb-1">Nueva contraseña <span className="text-muted-foreground font-normal">(opcional)</span></label>
