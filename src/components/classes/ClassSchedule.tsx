@@ -117,7 +117,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           </p>
           <div className="flex flex-col gap-3">
             {specialEvents.map((event) => {
-              const spotsLeft = event.capacity - event.spots_booked
+              const spotsLeft = (event.capacity - (event.blocked_stations?.length ?? 0)) - event.spots_booked
               const isFull = spotsLeft <= 0
               const sessionDateTime = new Date(`${event.date}T${event.start_time}`)
               const isPast = sessionDateTime < new Date()
@@ -341,7 +341,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
         )}
 
         {daySessions.map((session) => {
-          const spotsLeft = session.capacity - session.spots_booked
+          const spotsLeft = (session.capacity - (session.blocked_stations?.length ?? 0)) - session.spots_booked
           const isFull = spotsLeft <= 0
           const classLabel = CLASS_TYPE_LABELS[session.class_type]
           const colorClass = CLASS_TYPE_COLORS[session.class_type]
