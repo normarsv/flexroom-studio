@@ -146,9 +146,11 @@ export default function Navbar({ locale }: { locale: string }) {
                     <Button variant="outline" size="sm">{t('admin')}</Button>
                   </Link>
                 )}
-                <Link href={`/${locale}/account`}>
-                  <Button variant="outline" size="sm">{t('account')}</Button>
-                </Link>
+                {!user.isAdmin && (
+                  <Link href={`/${locale}/account`}>
+                    <Button variant="outline" size="sm">{t('account')}</Button>
+                  </Link>
+                )}
                 <Button variant="ghost" size="sm" onClick={handleLogout}>{t('logout')}</Button>
               </>
             ) : (
@@ -206,9 +208,11 @@ export default function Navbar({ locale }: { locale: string }) {
               </button>
               {user ? (
                 <>
-                  <Link href={`/${locale}/account`} onClick={() => setMenuOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full">{t('account')}</Button>
-                  </Link>
+                  {!user.isAdmin && (
+                    <Link href={`/${locale}/account`} onClick={() => setMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full">{t('account')}</Button>
+                    </Link>
+                  )}
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">{t('logout')}</Button>
                 </>
               ) : (

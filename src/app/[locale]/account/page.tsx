@@ -13,9 +13,10 @@ export default async function AccountPage({
 
   if (!user) redirect(`/${locale}/login`)
 
-  // Coaches go straight to the schedule panel
+  // Admins and coaches go to the admin panel
   const { data: roleCheck } = await supabase.from('profiles').select('is_coach, is_admin').eq('id', user.id).single()
-  if (roleCheck?.is_coach && !roleCheck?.is_admin) redirect(`/${locale}/admin/schedule`)
+  if (roleCheck?.is_admin) redirect(`/${locale}/admin`)
+  if (roleCheck?.is_coach) redirect(`/${locale}/admin/schedule`)
 
   const now = new Date().toISOString()
 
