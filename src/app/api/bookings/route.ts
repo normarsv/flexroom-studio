@@ -197,9 +197,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Error al crear la reserva' }, { status: 500 })
     }
 
-    // Deduct session if using a package
+    // Deduct session if using a package — must use adminClient, RLS blocks user updates on user_packages
     if (userPackage && userPackage.sessions_remaining !== null) {
-      await supabase
+      const adminClient = createAdminClient()
+      await adminClient
         .from('user_packages')
         .update({ sessions_remaining: userPackage.sessions_remaining - 1 })
         .eq('id', userPackageId)
