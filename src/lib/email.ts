@@ -17,7 +17,7 @@ function substitute(template: string, vars: Record<string, string>) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`)
 }
 
-function buildEmail({
+export function buildEmail({
   heading,
   body,
   ctaLabel,
@@ -74,10 +74,10 @@ function buildEmail({
 </html>`
 }
 
-function detailRow(label: string, value: string) {
+export function detailRow(label: string, value: string) {
   return `<tr>
     <td style="padding:6px 0;font-size:13px;color:#666;width:110px;vertical-align:top;">${label}</td>
-    <td style="padding:6px 0;font-size:13px;color:#1a2e5c;font-weight:600;vertical-align:top;">${value}</td>
+    <td style="padding:6px 0;font-size:13px;color:#1e1e1e;font-weight:600;vertical-align:top;">${value}</td>
   </tr>`
 }
 
