@@ -970,6 +970,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
 
       {/* ── COMING SOON ───────────────────────────────────── */}
       {tab === 'coming_soon' && (
+        <div className="space-y-6">
         <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
           <div>
             <h2 className="text-lg font-semibold text-primary">Página "Próximamente"</h2>
@@ -1082,6 +1083,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
               </div>
             </>
           )}
+        </div>
         </div>
       )}
 
