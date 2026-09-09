@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
-import { sendWaitlistPromotion } from '@/lib/email'
+import { sendWaitlistPromotion, sendCancellationConfirmation } from '@/lib/email'
 
 export async function POST(
   request: NextRequest,
@@ -121,6 +121,19 @@ export async function POST(
     }
   } else {
     // Cancelling a waitlist booking — just release nothing, spot was never taken
+  }
+
+  // Send cancellation confirmation to the client
+  if (booking.status === 'confirmed') {
+    const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', user.id).single()
+    if (prof) {
+      sendCancellationConfirmation({
+        to: prof.email,
+        name: prof.full_name || prof.email,
+        session: booking.session,
+        creditGranted,
+      }).catch(console.error)
+    }
   }
 
   return NextResponse.json({ success: true, creditGranted: booking.status === 'confirmed' ? creditGranted : false, cancellationHoursLimit })

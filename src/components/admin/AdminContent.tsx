@@ -41,6 +41,18 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
   const [emailTemplates, setEmailTemplates] = useState<Record<string, EmailTemplate>>({})
   const [emailsLoading, setEmailsLoading] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<string | null>(null)
+  const [previewHtml, setPreviewHtml] = useState<string>('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  async function openPreview(id: string) {
+    setPreviewType(id)
+    setPreviewLoading(true)
+    setPreviewHtml('')
+    const res = await fetch(`/api/admin/email-preview?type=${id}`)
+    if (res.ok) setPreviewHtml(await res.text())
+    setPreviewLoading(false)
+  }
 
   useEffect(() => {
     if (tab === 'emails' && Object.keys(emailTemplates).length === 0) fetchEmailTemplates()
@@ -416,6 +428,7 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
           { key: 'station_map', label: 'Mapa de estaciones' },
+          { key: 'emails', label: 'Correos' },
           { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
@@ -1104,17 +1117,51 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => handleSaveTemplate(id)}
-                    disabled={savingTemplate === id}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    {savingTemplate === id ? 'Guardando...' : 'Guardar plantilla'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => openPreview(id)}
+                    >
+                      Vista previa
+                    </Button>
+                    <Button
+                      onClick={() => handleSaveTemplate(id)}
+                      disabled={savingTemplate === id}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {savingTemplate === id ? 'Guardando...' : 'Guardar plantilla'}
+                    </Button>
+                  </div>
                 </div>
               )
             })
           )}
+        </div>
+      )}
+
+      {/* ── EMAIL PREVIEW MODAL ───────────────────────────── */}
+      {previewType !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+              <p className="font-semibold text-primary text-sm">Vista previa del correo</p>
+              <button onClick={() => setPreviewType(null)} className="text-muted-foreground hover:text-primary p-1">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden rounded-b-2xl">
+              {previewLoading ? (
+                <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Cargando...</div>
+              ) : (
+                <iframe
+                  srcDoc={previewHtml}
+                  className="w-full h-full min-h-[500px] border-0"
+                  title="Email preview"
+                  sandbox="allow-same-origin"
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
 
