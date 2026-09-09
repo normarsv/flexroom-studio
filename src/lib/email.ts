@@ -158,12 +158,17 @@ export async function sendBookingConfirmation({ to, name, session }: BookingEmai
     })
   }
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject,
     html,
   })
+  if (error) {
+    console.error('[email] sendBookingConfirmation failed:', error, { to, subject })
+    throw error
+  }
+  return data
 }
 
 // ── Booking cancellation confirmation ────────────────────────────────────────
@@ -195,12 +200,13 @@ export async function sendCancellationConfirmation({
     ctaUrl: 'https://www.flexroomstudio.com/es/account',
   })
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject: `Cancelación confirmada: ${className} · ${format(sessionDate, "d MMM", { locale: es })}`,
     html,
   })
+  if (error) console.error('[email] sendCancellationConfirmation failed:', error, { to })
 }
 
 // ── Session cancelled by admin (notify all booked clients) ──────────────────
@@ -218,12 +224,13 @@ export async function sendSessionCancelledNotification({ to, name, session }: Bo
     ctaUrl: 'https://www.flexroomstudio.com/es/classes',
   })
 
-  await resend.emails.send({
+  const { error: e2 } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject: `Clase cancelada: ${className} · ${format(sessionDate, "d MMM 'a las' HH:mm", { locale: es })}`,
     html,
   })
+  if (e2) console.error('[email] sendSessionCancelledNotification failed:', e2, { to })
 }
 
 // ── Waitlist promotion ───────────────────────────────────────────────────────
@@ -242,12 +249,13 @@ export async function sendWaitlistPromotion({ to, name, session }: BookingEmailP
     ctaUrl: 'https://www.flexroomstudio.com/es/account',
   })
 
-  await resend.emails.send({
+  const { error: e3 } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject: `¡Lugar disponible! ${className} — ${dateStr}`,
     html,
   })
+  if (e3) console.error('[email] sendWaitlistPromotion failed:', e3, { to })
 }
 
 // ── Package purchase confirmation ────────────────────────────────────────────
@@ -298,10 +306,11 @@ export async function sendPackageConfirmation({ to, name, packageName, sessionsR
     })
   }
 
-  await resend.emails.send({
+  const { error: e4 } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject,
     html,
   })
+  if (e4) console.error('[email] sendPackageConfirmation failed:', e4, { to, subject })
 }
