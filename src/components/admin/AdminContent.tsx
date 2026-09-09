@@ -231,6 +231,62 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
     }
   }
 
+  // Waitlist
+  const [waitlist, setWaitlist] = useState<{ id: string; email: string; created_at: string }[]>([])
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [waitlistSubject, setWaitlistSubject] = useState('')
+  const [waitlistBody, setWaitlistBody] = useState('')
+  const [waitlistSending, setWaitlistSending] = useState(false)
+
+  async function loadWaitlist() {
+    setWaitlistLoading(true)
+    try {
+      const res = await fetch('/api/admin/waitlist')
+      if (res.ok) setWaitlist(await res.json())
+    } finally {
+      setWaitlistLoading(false)
+    }
+  }
+
+  async function handleSendWaitlistEmail() {
+    if (!waitlistSubject.trim() || !waitlistBody.trim()) {
+      toast.error('Asunto y mensaje son requeridos')
+      return
+    }
+    if (!confirm(`¿Enviar correo a ${waitlist.length} personas en la lista de espera?`)) return
+    setWaitlistSending(true)
+    try {
+      const res = await fetch('/api/admin/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: waitlistSubject, body: `<p>${waitlistBody.replace(/\n/g, '</p><p>')}</p>` }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Correo enviado a ${data.sent} personas`)
+        setWaitlistSubject('')
+        setWaitlistBody('')
+      } else {
+        toast.error(data.error || 'Error al enviar')
+      }
+    } finally {
+      setWaitlistSending(false)
+    }
+  }
+
+  function exportWaitlistCSV() {
+    const csv = 'Email,Fecha de registro\n' + waitlist.map(w =>
+      `${w.email},${new Date(w.created_at).toLocaleDateString('es-MX')}`
+    ).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'lista-de-espera.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // Coming soon settings
   const [comingSoonEnabled, setComingSoonEnabled] = useState(settings?.coming_soon_enabled ?? false)
   const [comingSoonPassword, setComingSoonPassword] = useState(settings?.coming_soon_password ?? 'flexroom2026')
@@ -967,6 +1023,65 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           >
             {comingSoonLoading ? 'Guardando...' : 'Guardar'}
           </Button>
+        </div>
+
+        {/* Waitlist */}
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Lista de espera</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Personas que se registraron en la página de próximamente.</p>
+            </div>
+            <div className="flex gap-2">
+              {waitlist.length > 0 && (
+                <Button variant="outline" size="sm" onClick={exportWaitlistCSV}>
+                  Exportar CSV
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={loadWaitlist} disabled={waitlistLoading}>
+                {waitlistLoading ? 'Cargando...' : waitlist.length === 0 ? 'Cargar lista' : 'Actualizar'}
+              </Button>
+            </div>
+          </div>
+
+          {waitlist.length > 0 && (
+            <>
+              <p className="text-sm font-medium text-primary">{waitlist.length} registros</p>
+              <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                {waitlist.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span className="text-primary">{w.email}</span>
+                    <span className="text-muted-foreground text-xs">{new Date(w.created_at).toLocaleDateString('es-MX')}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-sm font-medium text-primary">Enviar correo a todos</p>
+                <input
+                  type="text"
+                  placeholder="Asunto del correo"
+                  value={waitlistSubject}
+                  onChange={(e) => setWaitlistSubject(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <textarea
+                  placeholder="Cuerpo del correo (texto plano, cada línea se convierte en párrafo)"
+                  value={waitlistBody}
+                  onChange={(e) => setWaitlistBody(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                />
+                <Button
+                  onClick={handleSendWaitlistEmail}
+                  disabled={waitlistSending}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {waitlistSending ? 'Enviando...' : `Enviar a ${waitlist.length} personas`}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

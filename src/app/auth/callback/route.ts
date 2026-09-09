@@ -9,6 +9,13 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient()
     await supabase.auth.exchangeCodeForSession(code)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', user.id)
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`)

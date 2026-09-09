@@ -48,6 +48,7 @@ interface ClientRow {
   phone: string | null
   credits: CreditEntry[]
   created_at: string
+  last_login_at: string | null
   user_packages: UserPackageEntry[]
   bookings: BookingEntry[]
 }
@@ -61,7 +62,20 @@ interface PackageOption {
 
 type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial' | 'reservas'
 
-const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+const FOUR_WEEKS_AGO = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
+
+function isClientActive(client: ClientRow): boolean {
+  // Active if: booked in last 4 weeks
+  if (client.bookings.some((b) => new Date(b.created_at) > FOUR_WEEKS_AGO)) return true
+  // Active if: logged in within last 4 weeks
+  if (client.last_login_at && new Date(client.last_login_at) > FOUR_WEEKS_AGO) return true
+  // Active if: has a non-expired membership with sessions remaining (or unlimited)
+  if (client.user_packages?.some((up) =>
+    new Date(up.expires_at) > new Date() &&
+    (up.sessions_remaining === null || up.sessions_remaining > 0)
+  )) return true
+  return false
+}
 
 export default function AdminClientsTable({
   clients: initialClients,
@@ -399,7 +413,7 @@ export default function AdminClientsTable({
       const lastB = c.bookings.length > 0
         ? c.bookings.reduce((a, b) => a.created_at > b.created_at ? a : b)
         : null
-      const isActive = c.bookings.some((b) => new Date(b.created_at) > THIRTY_DAYS_AGO)
+      const isActive = isClientActive(c)
       return [
         c.full_name || '',
         c.email,
@@ -471,7 +485,7 @@ export default function AdminClientsTable({
                   (up) => new Date(up.expires_at) > new Date()
                 ) || []
                 const totalBookings = client.bookings?.length ?? 0
-                const isActive = client.bookings.some((b) => new Date(b.created_at) > THIRTY_DAYS_AGO)
+                const isActive = isClientActive(client)
                 const creditCount = client.credits?.length ?? 0
                 const totalRecibido =
                   (client.user_packages?.reduce((sum: number, up: UserPackageEntry) => sum + (up.package?.price_mxn ?? 0), 0) ?? 0) +
