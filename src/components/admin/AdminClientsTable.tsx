@@ -466,7 +466,6 @@ export default function AdminClientsTable({
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="text-left px-4 py-3 font-medium text-primary">Nombre</th>
-                <th className="text-left px-4 py-3 font-medium text-primary">Correo</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Teléfono</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Estado</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Membresías activas</th>
@@ -491,7 +490,6 @@ export default function AdminClientsTable({
                 return (
                   <tr key={client.id} className="hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-primary">{client.full_name || '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{client.email}</td>
                     <td className="px-4 py-3 text-muted-foreground">{client.phone || <span className="text-xs italic">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
