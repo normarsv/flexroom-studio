@@ -69,11 +69,8 @@ function isClientActive(client: ClientRow): boolean {
   if (client.bookings.some((b) => new Date(b.created_at) > FOUR_WEEKS_AGO)) return true
   // Active if: logged in within last 4 weeks
   if (client.last_login_at && new Date(client.last_login_at) > FOUR_WEEKS_AGO) return true
-  // Active if: has a non-expired membership with sessions remaining (or unlimited)
-  if (client.user_packages?.some((up) =>
-    new Date(up.expires_at) > new Date() &&
-    (up.sessions_remaining === null || up.sessions_remaining > 0)
-  )) return true
+  // Active if: has a non-expired membership
+  if (client.user_packages?.some((up) => new Date(up.expires_at) > new Date())) return true
   return false
 }
 
