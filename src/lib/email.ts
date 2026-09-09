@@ -29,9 +29,9 @@ function buildEmail({
   ctaUrl?: string
 }) {
   const cta = ctaLabel && ctaUrl
-    ? `<div style="text-align:center;margin:28px 0;">
+    ? `<div style="text-align:center;margin:32px 0 8px;">
         <a href="${ctaUrl}"
-           style="background:#1a2e5c;color:#F4EF71;text-decoration:none;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;display:inline-block;letter-spacing:0.3px;">
+           style="background:#1e1e1e;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 32px;border-radius:8px;display:inline-block;letter-spacing:0.2px;">
           ${ctaLabel}
         </a>
        </div>`
@@ -40,28 +40,29 @@ function buildEmail({
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f4ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4ef;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#f5f4ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4ef;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
 
-        <!-- Header -->
+        <!-- Logo -->
         <tr>
-          <td style="background:#1a2e5c;border-radius:12px 12px 0 0;padding:24px 32px;text-align:center;">
-            <p style="margin:0;font-size:22px;font-weight:900;color:#F4EF71;letter-spacing:-0.5px;text-transform:lowercase;">flex room.</p>
+          <td style="padding:0 0 20px;text-align:center;">
+            <p style="margin:0;font-size:20px;font-weight:900;color:#1e1e1e;letter-spacing:-0.5px;text-transform:lowercase;">flex room.</p>
+            <div style="width:32px;height:3px;background:#F4EF71;margin:8px auto 0;border-radius:2px;"></div>
           </td>
         </tr>
 
-        <!-- Body -->
+        <!-- Card -->
         <tr>
-          <td style="background:#ffffff;padding:32px;border-radius:0 0 12px 12px;">
-            <h1 style="margin:0 0 16px;font-size:20px;font-weight:700;color:#1a2e5c;">${heading}</h1>
+          <td style="background:#ffffff;border-radius:16px;padding:36px 36px 28px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+            <h1 style="margin:0 0 20px;font-size:19px;font-weight:700;color:#1e1e1e;line-height:1.3;">${heading}</h1>
             ${body}
             ${cta}
-            <hr style="border:none;border-top:1px solid #ebebeb;margin:28px 0 20px;">
-            <p style="margin:0;font-size:12px;color:#999;line-height:1.6;">
+            <hr style="border:none;border-top:1px solid #f0efea;margin:28px 0 20px;">
+            <p style="margin:0;font-size:12px;color:#aaa;line-height:1.7;">
               Flex Room Studio · Crescencio Rosas 54, San Cristóbal de las Casas<br>
-              <a href="https://www.flexroomstudio.com" style="color:#999;">flexroomstudio.com</a>
+              <a href="https://www.flexroomstudio.com" style="color:#aaa;text-decoration:none;">flexroomstudio.com</a>
             </p>
           </td>
         </tr>
@@ -94,7 +95,7 @@ function sessionDetails(session: BookingEmailParams['session'], className: strin
   ].join('')
 
   return `<table cellpadding="0" cellspacing="0" width="100%"
-    style="background:#f5f4ef;border-radius:8px;padding:16px;margin:16px 0;">
+    style="background:#f9f8f4;border-radius:10px;padding:16px 20px;margin:16px 0;border:1px solid #eeecea;">
     ${rows}
   </table>`
 }
@@ -140,19 +141,23 @@ export async function sendBookingConfirmation({ to, name, session }: BookingEmai
 
   let html: string
   if (template) {
+    // Template body already contains the greeting — don't prepend another one
+    const bodyText = substitute(template.body_es, vars)
+    const paragraphs = bodyText.split('\n').map((l: string) =>
+      l.trim() ? `<p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 10px;">${l}</p>` : ''
+    ).join('')
     html = buildEmail({
-      heading: substitute(template.subject_es, vars),
-      body: `<p style="color:#444;font-size:14px;margin:0 0 4px;">Hola ${name},</p>
-             <p style="color:#444;font-size:14px;margin:0 0 16px;">${substitute(template.body_es, vars)}</p>`,
+      heading: '¡Tu reserva está confirmada!',
+      body: paragraphs + sessionDetails(session, className),
       ctaLabel: 'Ver mis clases',
       ctaUrl: 'https://www.flexroomstudio.com/es/account',
     })
   } else {
     html = buildEmail({
       heading: '¡Tu reserva está confirmada!',
-      body: `<p style="color:#444;font-size:14px;margin:0 0 16px;">Hola <strong>${name}</strong>, te esperamos en:</p>
+      body: `<p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">Hola <strong>${name}</strong>, te esperamos en:</p>
              ${sessionDetails(session, className)}
-             <p style="color:#666;font-size:13px;margin:8px 0 0;">Si necesitas cancelar, hazlo con al menos 12 horas de anticipación desde tu cuenta.</p>`,
+             <p style="color:#888;font-size:13px;margin:8px 0 0;">Si necesitas cancelar, hazlo con al menos 12 horas de anticipación desde tu cuenta.</p>`,
       ctaLabel: 'Ver mis clases',
       ctaUrl: 'https://www.flexroomstudio.com/es/account',
     })
@@ -288,19 +293,22 @@ export async function sendPackageConfirmation({ to, name, packageName, sessionsR
 
   let html: string
   if (template) {
+    const bodyText = substitute(template.body_es, vars)
+    const paragraphs = bodyText.split('\n').map((l: string) =>
+      l.trim() ? `<p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 10px;">${l}</p>` : ''
+    ).join('')
     html = buildEmail({
-      heading: substitute(template.subject_es, vars),
-      body: `<p style="color:#444;font-size:14px;margin:0 0 4px;">Hola ${name},</p>
-             <p style="color:#444;font-size:14px;margin:0 0 16px;">${substitute(template.body_es, vars)}</p>`,
+      heading: '¡Tu membresía está activa!',
+      body: paragraphs + details,
       ctaLabel: 'Reservar una clase',
       ctaUrl: 'https://www.flexroomstudio.com/es/classes',
     })
   } else {
     html = buildEmail({
       heading: '¡Tu membresía está activa!',
-      body: `<p style="color:#444;font-size:14px;margin:0 0 16px;">Hola <strong>${name}</strong>, tu membresía ha sido activada:</p>
+      body: `<p style="color:#555;font-size:14px;line-height:1.6;margin:0 0 16px;">Hola <strong>${name}</strong>, tu membresía ha sido activada:</p>
              ${details}
-             <p style="color:#666;font-size:13px;">Ya puedes reservar tus clases en la app.</p>`,
+             <p style="color:#888;font-size:13px;">Ya puedes reservar tus clases en la app.</p>`,
       ctaLabel: 'Reservar una clase',
       ctaUrl: 'https://www.flexroomstudio.com/es/classes',
     })
