@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +14,14 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ locale
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sessionReady, setSessionReady] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      setSessionReady(!!data.session)
+    })
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,6 +42,39 @@ export default function ResetPasswordPage({ params }: { params: Promise<{ locale
     } finally {
       setLoading(false)
     }
+  }
+
+  if (sessionReady === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30">
+        <p className="text-muted-foreground text-sm">Verificando enlace...</p>
+      </div>
+    )
+  }
+
+  if (sessionReady === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-secondary/30">
+        <div className="w-full max-w-sm text-center">
+          <h1 className="text-2xl font-bold text-primary mb-2">{BRAND.name}</h1>
+          <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-3">
+            <p className="text-sm font-medium text-primary">Enlace expirado o inválido</p>
+            <p className="text-sm text-muted-foreground">
+              Este enlace ya fue usado o expiró. Solicita uno nuevo desde la pantalla de inicio de sesión.
+            </p>
+            <Button
+              onClick={async () => {
+                const { locale } = await params
+                router.push(`/${locale}/login`)
+              }}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Volver al inicio de sesión
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
