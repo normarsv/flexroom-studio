@@ -20,13 +20,14 @@ export async function PATCH(
   }
 
   const body = await request.json()
-  const { date, start_time, duration_minutes, class_type, instructor_id, capacity, is_special, event_title, event_description, event_type_label } = body
+  const { date, start_time, duration_minutes, class_type, instructor_id, capacity, custom_title, is_special, event_title, event_description, event_type_label } = body
 
   const { data, error } = await supabase
     .from('class_sessions')
     .update({
       date, start_time, duration_minutes, class_type, instructor_id,
-      capacity, is_special: is_special || false,
+      capacity, custom_title: custom_title || null,
+      is_special: is_special || false,
       event_title: is_special ? (event_title || null) : null,
       event_description: is_special ? (event_description || null) : null,
       event_type_label: is_special ? (event_type_label || null) : null,

@@ -27,6 +27,7 @@ export default function SessionFormModal({ session, instructors, locale, onClose
     class_type: session?.class_type || 'funcional' as ClassType,
     instructor_id: session?.instructor_id || instructors[0]?.id || '',
     capacity: session?.capacity || 5,
+    custom_title: session?.custom_title || '',
     is_special: session?.is_special || defaultSpecial,
     event_title: session?.event_title || '',
     event_description: session?.event_description || '',
@@ -152,6 +153,20 @@ export default function SessionFormModal({ session, instructors, locale, onClose
                 <option key={type} value={type}>{labels.es}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-primary block mb-1">
+              Título personalizado <span className="text-muted-foreground font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.custom_title}
+              onChange={(e) => setForm({ ...form, custom_title: e.target.value })}
+              placeholder={CLASS_TYPE_LABELS[form.class_type]?.es || form.class_type}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Si se deja vacío, se muestra el nombre del tipo de clase.</p>
           </div>
 
           <div>

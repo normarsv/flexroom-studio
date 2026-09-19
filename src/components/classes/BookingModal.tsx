@@ -180,7 +180,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
             {format(date, "EEEE d 'de' MMMM", { locale: dateLocale })}
           </p>
           <h2 className="text-xl font-bold text-primary">
-            {locale === 'es' ? classLabel.es : classLabel.en}
+            {(session as any).custom_title || (locale === 'es' ? classLabel.es : classLabel.en)}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
             {session.start_time.slice(0, 5)} · {session.duration_minutes} min

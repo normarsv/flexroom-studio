@@ -350,9 +350,11 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           const isBooked = localBookedIds.includes(session.id)
           const isWaitlisted = localWaitlisted.includes(session.id)
           const isSpecial = (session as any).is_special
+          const customTitle = (session as any).custom_title as string | null
           const eventTitle = (session as any).event_title as string | null
           const eventDescription = (session as any).event_description as string | null
           const eventTypeLabel = (session as any).event_type_label as string | null
+          const displayTitle = customTitle || (isSpecial ? eventTitle : null) || (locale === 'es' ? classLabel?.es : classLabel?.en) || session.class_type
 
           const timeDisplay = (() => {
             const [h, m] = session.start_time.split(':').map(Number)
@@ -388,7 +390,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                       </span>
                     </div>
                     <p className="font-heading font-bold text-base text-foreground leading-tight">
-                      {eventTitle || (locale === 'es' ? 'Evento especial' : 'Special event')}
+                      {customTitle || eventTitle || (locale === 'es' ? 'Evento especial' : 'Special event')}
                     </p>
                     {eventDescription && (
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{eventDescription}</p>
@@ -479,6 +481,9 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     </span>
                   )}
                 </div>
+                {customTitle && (
+                  <p className="font-heading font-bold text-sm text-foreground leading-tight mt-0.5">{customTitle}</p>
+                )}
                 {(isFull || spotsLeft <= 3) && (
                   <div className="flex items-center gap-1 mt-1.5">
                     <FontAwesomeIcon icon={faUsers} className="w-3 h-3 text-muted-foreground" />

@@ -332,9 +332,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                       )}
                       <span className="text-sm font-medium text-primary">{session.start_time.slice(0, 5)}</span>
                       <span className="text-sm text-muted-foreground truncate">
-                        {(session as any).is_special && (session as any).event_title
-                          ? (session as any).event_title
-                          : (session as any).instructor?.name}
+                        {(session as any).custom_title
+                          || ((session as any).is_special ? (session as any).event_title : null)
+                          || (session as any).instructor?.name}
                       </span>
                       <span className="text-xs text-muted-foreground shrink-0">
                         {session.capacity - session.spots_booked} / {session.capacity} lugares
