@@ -102,15 +102,6 @@ export default function AdminHelpPage() {
             </ul>
           </ManualCard>
 
-          <ManualCard title="Galería">
-            <p>Sube y organiza las fotos que aparecen en la página <strong>Galería</strong>.</p>
-            <ul>
-              <li><strong>Subir:</strong> selecciona una imagen desde tu dispositivo. Se guarda automáticamente.</li>
-              <li><strong>Eliminar:</strong> ícono de basura en cada foto.</li>
-            </ul>
-            <Note>Formato recomendado: JPG o PNG, mínimo 800 px de ancho.</Note>
-          </ManualCard>
-
           <ManualCard title="Clientes">
             <p>Vista de todos los usuarios registrados en la plataforma.</p>
             <ul>
@@ -141,7 +132,16 @@ export default function AdminHelpPage() {
             <p className="mt-2">Los clientes ingresan el código al pagar una membresía o clase individual.</p>
           </ManualCard>
 
-          <ManualCard title="Configuración">
+          <ManualCard title="Admins">
+            <p>Gestiona los usuarios con acceso especial al panel.</p>
+            <ul>
+              <li><strong>Admin:</strong> acceso completo al panel de administración.</li>
+              <li><strong>Coach:</strong> acceso solo al horario de clases.</li>
+              <li>Para agregar: ingresa correo, nombre y rol. Para quitar: botón "Quitar".</li>
+            </ul>
+          </ManualCard>
+
+          <ManualCard title="Contenido">
             <div className="space-y-4">
               <div>
                 <p className="font-medium text-primary text-sm">Página de inicio</p>
@@ -152,6 +152,15 @@ export default function AdminHelpPage() {
                 <p>Edita el slogan, dirección, Instagram, correo y teléfono que aparecen en el pie de página.</p>
               </div>
               <div>
+                <p className="font-medium text-primary text-sm">Galería</p>
+                <p>Sube y organiza las fotos que aparecen en la página <strong>Galería</strong>. Formato recomendado: JPG o PNG, mínimo 800 px de ancho.</p>
+              </div>
+            </div>
+          </ManualCard>
+
+          <ManualCard title="Configuración">
+            <div className="space-y-4">
+              <div>
                 <p className="font-medium text-primary text-sm">Cancelaciones</p>
                 <ul>
                   <li><strong>Horas límite:</strong> define cuántas horas antes de la clase puede cancelarse con crédito. Por defecto: 12 horas.</li>
@@ -159,16 +168,12 @@ export default function AdminHelpPage() {
                 </ul>
               </div>
               <div>
-                <p className="font-medium text-primary text-sm">Correos</p>
-                <p>Personaliza el texto de los correos automáticos que reciben los clientes: confirmación de reserva y confirmación de membresía. Cada uno es editable en español e inglés.</p>
+                <p className="font-medium text-primary text-sm">Mapa de estaciones</p>
+                <p>Sube la imagen del plano de estaciones que verán los clientes al reservar una clase de Reformer.</p>
               </div>
               <div>
-                <p className="font-medium text-primary text-sm">Usuarios</p>
-                <ul>
-                  <li><strong>Admin:</strong> acceso completo al panel de administración.</li>
-                  <li><strong>Coach:</strong> rol de instructora.</li>
-                  <li>Para agregar: ingresa correo, nombre y rol. Para quitar: botón "Quitar".</li>
-                </ul>
+                <p className="font-medium text-primary text-sm">Correos</p>
+                <p>Personaliza el texto de los correos automáticos que reciben los clientes: confirmación de reserva y confirmación de membresía. Cada uno es editable en español e inglés.</p>
               </div>
               <div>
                 <p className="font-medium text-primary text-sm">Próximamente</p>

@@ -2,21 +2,18 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { CancellationPolicy, HomepageContent, StudioSettings } from '@/types'
+import { CancellationPolicy, StudioSettings } from '@/types'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUpload, faTrash, faPencil } from '@fortawesome/free-solid-svg-icons'
 
 interface Props {
   policy: CancellationPolicy | null
-  homepage: HomepageContent | null
   settings: StudioSettings | null
   locale: string
 }
 
-type Tab = 'homepage' | 'footer' | 'cancellation_settings' | 'coming_soon' | 'users' | 'emails' | 'station_map'
+type Tab = 'cancellation_settings' | 'coming_soon' | 'emails' | 'station_map'
 
 interface EmailTemplate {
   id: string
@@ -26,16 +23,8 @@ interface EmailTemplate {
   body_en: string
 }
 
-interface AdminUser {
-  id: string
-  email: string
-  full_name: string | null
-  is_admin: boolean
-  is_coach: boolean
-}
-
-export default function AdminContent({ policy, homepage, settings, locale }: Props) {
-  const [tab, setTab] = useState<Tab>('homepage')
+export default function AdminContent({ policy, settings, locale }: Props) {
+  const [tab, setTab] = useState<Tab>('cancellation_settings')
 
   // Email templates tab
   const [emailTemplates, setEmailTemplates] = useState<Record<string, EmailTemplate>>({})
@@ -88,146 +77,6 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       else toast.error('Error al guardar')
     } finally {
       setSavingTemplate(null)
-    }
-  }
-
-  // Users tab
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
-  const [usersLoading, setUsersLoading] = useState(false)
-  const [showAddUser, setShowAddUser] = useState(false)
-  const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserName, setNewUserName] = useState('')
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'coach'>('admin')
-  const [newUserPassword, setNewUserPassword] = useState('')
-  const [newUserPasswordConfirm, setNewUserPasswordConfirm] = useState('')
-  const [addingUser, setAddingUser] = useState(false)
-  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editIsAdmin, setEditIsAdmin] = useState(false)
-  const [editIsCoach, setEditIsCoach] = useState(false)
-  const [editPassword, setEditPassword] = useState('')
-  const [editPasswordConfirm, setEditPasswordConfirm] = useState('')
-  const [savingUser, setSavingUser] = useState(false)
-
-  useEffect(() => {
-    if (tab === 'users' && adminUsers.length === 0) fetchAdminUsers()
-  }, [tab])
-
-  async function fetchAdminUsers() {
-    setUsersLoading(true)
-    try {
-      const res = await fetch('/api/admin/users')
-      if (res.ok) setAdminUsers(await res.json())
-    } finally {
-      setUsersLoading(false)
-    }
-  }
-
-  async function handleAddUser(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newUserEmail) return
-    if (newUserPassword && newUserPassword !== newUserPasswordConfirm) {
-      toast.error('Las contraseñas no coinciden')
-      return
-    }
-    if (newUserPassword && newUserPassword.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres')
-      return
-    }
-    setAddingUser(true)
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: newUserEmail,
-          full_name: newUserName,
-          role: newUserRole,
-          password: newUserPassword || undefined,
-        }),
-      })
-      if (res.ok) {
-        const user = await res.json()
-        setAdminUsers((prev) => {
-          const exists = prev.find((u) => u.id === user.id)
-          return exists ? prev.map((u) => u.id === user.id ? user : u) : [...prev, user]
-        })
-        setShowAddUser(false)
-        setNewUserEmail('')
-        setNewUserName('')
-        setNewUserRole('admin')
-        setNewUserPassword('')
-        setNewUserPasswordConfirm('')
-        toast.success('Usuario agregado')
-      } else {
-        const { error } = await res.json()
-        toast.error(error || 'Error al agregar usuario')
-      }
-    } finally {
-      setAddingUser(false)
-    }
-  }
-
-  function openEditUser(u: AdminUser) {
-    setEditingUser(u)
-    setEditName(u.full_name || '')
-    setEditIsAdmin(u.is_admin)
-    setEditIsCoach(u.is_coach)
-    setEditPassword('')
-    setEditPasswordConfirm('')
-  }
-
-  async function handleSaveUser(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingUser) return
-    if (editPassword && editPassword !== editPasswordConfirm) {
-      toast.error('Las contraseñas no coinciden')
-      return
-    }
-    if (editPassword && editPassword.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres')
-      return
-    }
-    setSavingUser(true)
-    try {
-      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: editName,
-          is_admin: editIsAdmin,
-          is_coach: editIsCoach,
-          password: editPassword || undefined,
-        }),
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        if (!updated.is_admin && !updated.is_coach) {
-          // Downgraded to client — remove from this list
-          setAdminUsers((prev) => prev.filter((u) => u.id !== updated.id))
-          toast.success('Usuario movido a cliente')
-        } else {
-          setAdminUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u))
-          toast.success('Usuario actualizado')
-        }
-        setEditingUser(null)
-      } else {
-        const { error } = await res.json()
-        toast.error(error || 'Error al actualizar')
-      }
-    } finally {
-      setSavingUser(false)
-    }
-  }
-
-  async function handleRemoveUser(id: string) {
-    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setAdminUsers((prev) => prev.filter((u) => u.id !== id))
-      toast.success('Rol eliminado')
-    } else {
-      const { error } = await res.json()
-      toast.error(error || 'Error al eliminar')
     }
   }
 
@@ -312,37 +161,6 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
     }
   }
 
-  // Footer settings
-  const [footerTaglineEs, setFooterTaglineEs] = useState(settings?.footer_tagline_es ?? '')
-  const [footerTaglineEn, setFooterTaglineEn] = useState(settings?.footer_tagline_en ?? '')
-  const [footerAddress, setFooterAddress] = useState(settings?.footer_address ?? '')
-  const [footerInstagram, setFooterInstagram] = useState(settings?.footer_instagram ?? '')
-  const [footerEmail, setFooterEmail] = useState(settings?.footer_email ?? '')
-  const [footerPhone, setFooterPhone] = useState(settings?.footer_phone ?? '')
-  const [footerLoading, setFooterLoading] = useState(false)
-
-  async function handleSaveFooter() {
-    setFooterLoading(true)
-    try {
-      const res = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          footer_tagline_es: footerTaglineEs,
-          footer_tagline_en: footerTaglineEn,
-          footer_address: footerAddress,
-          footer_instagram: footerInstagram,
-          footer_email: footerEmail,
-          footer_phone: footerPhone || null,
-        }),
-      })
-      if (res.ok) toast.success('Footer actualizado')
-      else toast.error('Error al guardar')
-    } finally {
-      setFooterLoading(false)
-    }
-  }
-
   // Cancellation policy
   const [contentEs, setContentEs] = useState(policy?.content_es || '')
   const [contentEn, setContentEn] = useState(policy?.content_en || '')
@@ -367,54 +185,21 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
     }
   }
 
-  // Homepage text
-  const [heroTitleEs, setHeroTitleEs] = useState(homepage?.hero_title_es || '')
-  const [heroTitleEn, setHeroTitleEn] = useState(homepage?.hero_title_en || '')
-  const [heroSubtitleEs, setHeroSubtitleEs] = useState(homepage?.hero_subtitle_es || '')
-  const [heroSubtitleEn, setHeroSubtitleEn] = useState(homepage?.hero_subtitle_en || '')
-  const [heroImageUrl, setHeroImageUrl] = useState(homepage?.hero_image_url || '')
-  const [aboutTitleEs, setAboutTitleEs] = useState(homepage?.about_title_es || '')
-  const [aboutTitleEn, setAboutTitleEn] = useState(homepage?.about_title_en || '')
-  const [aboutTextEs, setAboutTextEs] = useState(homepage?.about_text_es || '')
-  const [aboutTextEn, setAboutTextEn] = useState(homepage?.about_text_en || '')
-  const [aboutImageUrl, setAboutImageUrl] = useState(homepage?.about_image_url || '')
-  const [homepageLoading, setHomepageLoading] = useState(false)
-
-  const heroImgRef = useRef<HTMLInputElement>(null)
-  const aboutImgRef = useRef<HTMLInputElement>(null)
+  // Station map
   const stationMapRef = useRef<HTMLInputElement>(null)
   const [stationMapUrl, setStationMapUrl] = useState(settings?.station_map_url || '')
   const [stationMapLoading, setStationMapLoading] = useState(false)
 
-  async function uploadImage(file: File, prefix: string): Promise<string | null> {
-    const supabase = createClient()
-    const ext = file.name.split('.').pop()
-    const path = `homepage/${prefix}-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('fs-media').upload(path, file)
-    if (error) { console.error('Upload error:', error); toast.error('Error al subir imagen'); return null }
-    const { data: { publicUrl } } = supabase.storage.from('fs-media').getPublicUrl(path)
-    return publicUrl
-  }
-
-  async function handleHeroImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadImage(file, 'hero')
-    if (url) setHeroImageUrl(url)
-  }
-
-  async function handleAboutImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadImage(file, 'about')
-    if (url) setAboutImageUrl(url)
-  }
-
   async function handleStationMapUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = await uploadImage(file, 'station-map')
-    if (url) setStationMapUrl(url)
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const path = `homepage/station-map-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('fs-media').upload(path, file)
+    if (error) { console.error('Upload error:', error); toast.error('Error al subir imagen'); return }
+    const { data: { publicUrl } } = supabase.storage.from('fs-media').getPublicUrl(path)
+    setStationMapUrl(publicUrl)
   }
 
   async function handleSaveStationMap() {
@@ -429,32 +214,6 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       else toast.error('Error al guardar')
     } finally {
       setStationMapLoading(false)
-    }
-  }
-
-  async function handleSaveHomepage() {
-    setHomepageLoading(true)
-    try {
-      const res = await fetch('/api/admin/content/homepage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hero_title_es: heroTitleEs,
-          hero_title_en: heroTitleEn,
-          hero_subtitle_es: heroSubtitleEs,
-          hero_subtitle_en: heroSubtitleEn,
-          hero_image_url: heroImageUrl || null,
-          about_title_es: aboutTitleEs,
-          about_title_en: aboutTitleEn,
-          about_text_es: aboutTextEs,
-          about_text_en: aboutTextEn,
-          about_image_url: aboutImageUrl || null,
-        }),
-      })
-      if (res.ok) toast.success('Página de inicio actualizada')
-      else toast.error('Error al guardar')
-    } finally {
-      setHomepageLoading(false)
     }
   }
 
@@ -480,12 +239,9 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
       {/* ── TABS ──────────────────────────────────────────── */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
         {([
-          { key: 'homepage', label: 'Página de inicio' },
-          { key: 'footer', label: 'Footer' },
           { key: 'cancellation_settings', label: 'Cancelaciones' },
           { key: 'station_map', label: 'Mapa de estaciones' },
           { key: 'emails', label: 'Correos' },
-          { key: 'users', label: 'Usuarios' },
           { key: 'coming_soon', label: 'Próximamente' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
@@ -499,474 +255,6 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
           </button>
         ))}
       </div>
-
-      {/* ── HOMEPAGE CONTENT ──────────────────────────────── */}
-      {tab === 'homepage' && <>
-      <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-primary">Página de inicio</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Edita los textos e imágenes que aparecen en la página principal del sitio.
-          </p>
-        </div>
-
-        {/* Hero section */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-            Hero
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Título (ES)</label>
-              <input
-                type="text"
-                value={heroTitleEs}
-                onChange={(e) => setHeroTitleEs(e.target.value)}
-                placeholder="flexroom."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Título (EN)</label>
-              <input
-                type="text"
-                value={heroTitleEn}
-                onChange={(e) => setHeroTitleEn(e.target.value)}
-                placeholder="flexroom."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Subtítulo (ES)</label>
-              <textarea
-                value={heroSubtitleEs}
-                onChange={(e) => setHeroSubtitleEs(e.target.value)}
-                rows={3}
-                placeholder="Texto descriptivo debajo del título..."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Subtítulo (EN)</label>
-              <textarea
-                value={heroSubtitleEn}
-                onChange={(e) => setHeroSubtitleEn(e.target.value)}
-                rows={3}
-                placeholder="Descriptive text below the title..."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Hero image */}
-          <div>
-            <label className="text-xs font-medium text-primary block mb-2">Imagen del hero</label>
-            <div className="flex items-start gap-4">
-              {heroImageUrl ? (
-                <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border shrink-0">
-                  <Image src={heroImageUrl} alt="Hero" fill className="object-cover" />
-                  <button
-                    onClick={() => setHeroImageUrl('')}
-                    className="absolute top-1 right-1 bg-black/60 rounded-full p-1 text-white hover:bg-black/80"
-                  >
-                    <FontAwesomeIcon icon={faTrash} className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <div className="w-32 h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
-                  <FontAwesomeIcon icon={faUpload} className="w-5 h-5" />
-                </div>
-              )}
-              <div className="flex-1">
-                <input ref={heroImgRef} type="file" accept="image/*" className="hidden" onChange={handleHeroImageUpload} />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => heroImgRef.current?.click()}
-                  className="rounded-lg"
-                >
-                  <FontAwesomeIcon icon={faUpload} className="w-3 h-3 mr-2" />
-                  {heroImageUrl ? 'Cambiar imagen' : 'Subir imagen'}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  La imagen aparecerá junto al texto del hero. Recomendado: 800×800 px o más.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* About section */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-            Nosotros
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Título (ES)</label>
-              <input
-                type="text"
-                value={aboutTitleEs}
-                onChange={(e) => setAboutTitleEs(e.target.value)}
-                placeholder="Nosotros"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Título (EN)</label>
-              <input
-                type="text"
-                value={aboutTitleEn}
-                onChange={(e) => setAboutTitleEn(e.target.value)}
-                placeholder="About us"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Texto (ES)</label>
-              <textarea
-                value={aboutTextEs}
-                onChange={(e) => setAboutTextEs(e.target.value)}
-                rows={5}
-                placeholder="Texto de la sección nosotros..."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Texto (EN)</label>
-              <textarea
-                value={aboutTextEn}
-                onChange={(e) => setAboutTextEn(e.target.value)}
-                rows={5}
-                placeholder="About section text..."
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
-              />
-            </div>
-          </div>
-
-          {/* About image */}
-          <div>
-            <label className="text-xs font-medium text-primary block mb-2">Imagen de nosotros</label>
-            <div className="flex items-start gap-4">
-              {aboutImageUrl ? (
-                <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-border shrink-0">
-                  <Image src={aboutImageUrl} alt="About" fill className="object-cover" />
-                  <button
-                    onClick={() => setAboutImageUrl('')}
-                    className="absolute top-1 right-1 bg-black/60 rounded-full p-1 text-white hover:bg-black/80"
-                  >
-                    <FontAwesomeIcon icon={faTrash} className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <div className="w-32 h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground shrink-0">
-                  <FontAwesomeIcon icon={faUpload} className="w-5 h-5" />
-                </div>
-              )}
-              <div className="flex-1">
-                <input ref={aboutImgRef} type="file" accept="image/*" className="hidden" onChange={handleAboutImageUpload} />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => aboutImgRef.current?.click()}
-                  className="rounded-lg"
-                >
-                  <FontAwesomeIcon icon={faUpload} className="w-3 h-3 mr-2" />
-                  {aboutImageUrl ? 'Cambiar imagen' : 'Subir imagen'}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  La imagen aparecerá junto al texto de la sección. Recomendado: 800×600 px o más.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <Button
-          onClick={handleSaveHomepage}
-          disabled={homepageLoading}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {homepageLoading ? 'Guardando...' : 'Guardar página de inicio'}
-        </Button>
-      </div>
-
-      </>}
-
-      {/* ── FOOTER ────────────────────────────────────────── */}
-      {tab === 'footer' && (
-        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
-          <div>
-            <h2 className="text-lg font-semibold text-primary">Footer</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">Información de contacto y texto que aparece en el pie de página del sitio.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Slogan (ES)</label>
-              <input
-                type="text"
-                value={footerTaglineEs}
-                onChange={(e) => setFooterTaglineEs(e.target.value)}
-                placeholder="Tu segundo hogar"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Slogan (EN)</label>
-              <input
-                type="text"
-                value={footerTaglineEn}
-                onChange={(e) => setFooterTaglineEn(e.target.value)}
-                placeholder="Your second home"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-primary block mb-1">Dirección</label>
-            <input
-              type="text"
-              value={footerAddress}
-              onChange={(e) => setFooterAddress(e.target.value)}
-              placeholder="Calle, Colonia, Ciudad, Estado"
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Instagram (URL completa)</label>
-              <input
-                type="url"
-                value={footerInstagram}
-                onChange={(e) => setFooterInstagram(e.target.value)}
-                placeholder="https://www.instagram.com/flexroomstudio"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Correo electrónico</label>
-              <input
-                type="email"
-                value={footerEmail}
-                onChange={(e) => setFooterEmail(e.target.value)}
-                placeholder="hola@flexroomstudio.com"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Teléfono (opcional)</label>
-              <input
-                type="tel"
-                value={footerPhone}
-                onChange={(e) => setFooterPhone(e.target.value)}
-                placeholder="+52 967 000 0000"
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-
-          <Button
-            onClick={handleSaveFooter}
-            disabled={footerLoading}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            {footerLoading ? 'Guardando...' : 'Guardar footer'}
-          </Button>
-        </div>
-      )}
-
-      {/* ── USERS ─────────────────────────────────────────── */}
-      {tab === 'users' && (
-        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-primary">Usuarios</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">Administradores y coaches con acceso especial.</p>
-            </div>
-            <Button onClick={() => setShowAddUser(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              + Agregar usuario
-            </Button>
-          </div>
-
-          {/* Add user modal */}
-          {showAddUser && (
-            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-              <form onSubmit={handleAddUser} className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
-                <h3 className="font-semibold text-primary">Agregar usuario</h3>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    placeholder="Nombre Apellido"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Correo electrónico *</label>
-                  <input
-                    type="email"
-                    required
-                    value={newUserEmail}
-                    onChange={(e) => setNewUserEmail(e.target.value)}
-                    placeholder="correo@ejemplo.com"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Rol</label>
-                  <div className="flex gap-2">
-                    {(['admin', 'coach'] as const).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setNewUserRole(r)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newUserRole === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-white text-muted-foreground border-border hover:border-primary'}`}
-                      >
-                        {r === 'admin' ? 'Admin' : 'Coach'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Contraseña</label>
-                  <input
-                    type="password"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                {newUserPassword && (
-                  <div>
-                    <label className="text-xs font-medium text-primary block mb-1">Confirmar contraseña</label>
-                    <input
-                      type="password"
-                      value={newUserPasswordConfirm}
-                      onChange={(e) => setNewUserPasswordConfirm(e.target.value)}
-                      placeholder="Repite la contraseña"
-                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                  </div>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => setShowAddUser(false)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
-                  <button type="submit" disabled={addingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                    {addingUser ? 'Agregando...' : 'Agregar'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Edit user modal */}
-          {editingUser && (
-            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-              <form onSubmit={handleSaveUser} className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
-                <h3 className="font-semibold text-primary">Editar usuario</h3>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Nombre completo</label>
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Nombre Apellido"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Rol</label>
-                  <select
-                    value={editIsAdmin ? 'admin' : editIsCoach ? 'coach' : 'client'}
-                    onChange={(e) => {
-                      setEditIsAdmin(e.target.value === 'admin')
-                      setEditIsCoach(e.target.value === 'coach')
-                    }}
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="coach">Coach</option>
-                    <option value="client">Cliente</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-primary block mb-1">Nueva contraseña <span className="text-muted-foreground font-normal">(opcional)</span></label>
-                  <input
-                    type="password"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                    placeholder="Dejar vacío para no cambiar"
-                    className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                {editPassword && (
-                  <div>
-                    <label className="text-xs font-medium text-primary block mb-1">Confirmar contraseña</label>
-                    <input
-                      type="password"
-                      value={editPasswordConfirm}
-                      onChange={(e) => setEditPasswordConfirm(e.target.value)}
-                      placeholder="Repite la contraseña"
-                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    />
-                  </div>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <button type="button" onClick={() => setEditingUser(null)} className="flex-1 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-secondary">Cancelar</button>
-                  <button type="submit" disabled={savingUser} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                    {savingUser ? 'Guardando...' : 'Guardar'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Users list */}
-          {usersLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando...</p>
-          ) : adminUsers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay administradores ni coaches registrados.</p>
-          ) : (
-            <div className="divide-y divide-border">
-              {adminUsers.map((u) => (
-                <div key={u.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <div className="text-sm font-medium text-primary">{u.full_name || '—'}</div>
-                    <div className="text-xs text-muted-foreground">{u.email}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {u.is_admin && (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">Admin</span>
-                    )}
-                    {u.is_coach && (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Coach</span>
-                    )}
-                    <button
-                      onClick={() => openEditUser(u)}
-                      className="text-muted-foreground hover:text-primary ml-2"
-                    >
-                      <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveUser(u.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── COMING SOON ───────────────────────────────────── */}
       {tab === 'coming_soon' && (
@@ -1118,6 +406,44 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
         </p>
       </div>}
 
+      {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-primary mb-1">Política de Cancelación</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Este texto aparecerá cuando los usuarios quieran conocer la política de cancelación.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-primary block mb-2">Español</label>
+            <textarea
+              value={contentEs}
+              onChange={(e) => setContentEs(e.target.value)}
+              rows={8}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
+              placeholder="Política de cancelación en español..."
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-primary block mb-2">English</label>
+            <textarea
+              value={contentEn}
+              onChange={(e) => setContentEn(e.target.value)}
+              rows={8}
+              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
+              placeholder="Cancellation policy in English..."
+            />
+          </div>
+        </div>
+
+        <Button
+          onClick={handleSavePolicy}
+          disabled={policyLoading}
+          className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          {policyLoading ? 'Guardando...' : 'Guardar política'}
+        </Button>
+      </div>}
+
       {/* ── STATION MAP IMAGE ─────────────────────────────── */}
       {tab === 'station_map' && <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
         <div>
@@ -1198,54 +524,25 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-primary block mb-1">Asunto (ES)</label>
-                      <input
-                        type="text"
-                        value={t.subject_es}
-                        onChange={(e) => updateTemplate(id, 'subject_es', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
+                      <input type="text" value={t.subject_es} onChange={(e) => updateTemplate(id, 'subject_es', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-primary block mb-1">Asunto (EN)</label>
-                      <input
-                        type="text"
-                        value={t.subject_en}
-                        onChange={(e) => updateTemplate(id, 'subject_en', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
+                      <input type="text" value={t.subject_en} onChange={(e) => updateTemplate(id, 'subject_en', e.target.value)} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-primary block mb-1">Cuerpo (ES)</label>
-                      <textarea
-                        value={t.body_es}
-                        onChange={(e) => updateTemplate(id, 'body_es', e.target.value)}
-                        rows={8}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
-                      />
+                      <textarea value={t.body_es} onChange={(e) => updateTemplate(id, 'body_es', e.target.value)} rows={8} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono" />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-primary block mb-1">Cuerpo (EN)</label>
-                      <textarea
-                        value={t.body_en}
-                        onChange={(e) => updateTemplate(id, 'body_en', e.target.value)}
-                        rows={8}
-                        className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
-                      />
+                      <textarea value={t.body_en} onChange={(e) => updateTemplate(id, 'body_en', e.target.value)} rows={8} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono" />
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => openPreview(id)}
-                    >
-                      Vista previa
-                    </Button>
-                    <Button
-                      onClick={() => handleSaveTemplate(id)}
-                      disabled={savingTemplate === id}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
+                    <Button variant="outline" onClick={() => openPreview(id)}>Vista previa</Button>
+                    <Button onClick={() => handleSaveTemplate(id)} disabled={savingTemplate === id} className="bg-primary text-primary-foreground hover:bg-primary/90">
                       {savingTemplate === id ? 'Guardando...' : 'Guardar plantilla'}
                     </Button>
                   </div>
@@ -1270,56 +567,12 @@ export default function AdminContent({ policy, homepage, settings, locale }: Pro
               {previewLoading ? (
                 <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Cargando...</div>
               ) : (
-                <iframe
-                  srcDoc={previewHtml}
-                  className="w-full h-full min-h-[500px] border-0"
-                  title="Email preview"
-                  sandbox="allow-same-origin"
-                />
+                <iframe srcDoc={previewHtml} className="w-full h-full min-h-[500px] border-0" title="Email preview" sandbox="allow-same-origin" />
               )}
             </div>
           </div>
         </div>
       )}
-
-      {/* ── CANCELLATION POLICY ───────────────────────────── */}
-      {tab === 'cancellation_settings' && <div className="bg-white rounded-xl border border-border shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-primary mb-1">Política de Cancelación</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Este texto aparecerá cuando los usuarios quieran conocer la política de cancelación.
-        </p>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-primary block mb-2">Español</label>
-            <textarea
-              value={contentEs}
-              onChange={(e) => setContentEs(e.target.value)}
-              rows={8}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
-              placeholder="Política de cancelación en español..."
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-primary block mb-2">English</label>
-            <textarea
-              value={contentEn}
-              onChange={(e) => setContentEn(e.target.value)}
-              rows={8}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y font-mono"
-              placeholder="Cancellation policy in English..."
-            />
-          </div>
-        </div>
-
-        <Button
-          onClick={handleSavePolicy}
-          disabled={policyLoading}
-          className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {policyLoading ? 'Guardando...' : 'Guardar política'}
-        </Button>
-      </div>}
     </div>
   )
 }
