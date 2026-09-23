@@ -199,13 +199,13 @@ function HomeContent({
                   transition-all duration-300 ease-out"
               >
                 {/* Discipline image */}
-                <div className="w-16 h-16 rounded-full overflow-hidden mb-6 shrink-0 bg-[#F4EF71]/15">
+                <div className="w-[74px] h-[74px] rounded-full overflow-hidden mb-6 shrink-0 bg-[#F4EF71]/15 self-center">
                   {disciplineImages[i] ? (
                     <Image
                       src={disciplineImages[i]!}
                       alt={d.title}
-                      width={64}
-                      height={64}
+                      width={74}
+                      height={74}
                       className="w-full h-full object-cover"
                     />
                   ) : (
