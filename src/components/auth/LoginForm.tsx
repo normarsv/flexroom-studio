@@ -120,10 +120,24 @@ export default function LoginForm({ locale }: { locale: string }) {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="text-center mb-8">
+      <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-primary">{BRAND.name}</h1>
         <p className="text-muted-foreground text-sm mt-1">{t('login_title')}</p>
       </div>
+
+      {mode === 'login' && (
+        <button
+          type="button"
+          onClick={() => setMode('activate')}
+          className="w-full mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#F4EF71]/20 border border-[#F4EF71] hover:bg-[#F4EF71]/40 transition-colors text-left"
+        >
+          <span className="text-lg">✨</span>
+          <div>
+            <p className="text-xs font-semibold text-primary">¿Ya eras cliente de Flex Room?</p>
+            <p className="text-xs text-muted-foreground">Activa tu cuenta aquí →</p>
+          </div>
+        </button>
+      )}
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         {/* Google */}
@@ -241,20 +255,6 @@ export default function LoginForm({ locale }: { locale: string }) {
           )}
         </p>
 
-        {mode === 'login' && (
-          <div className="border-t border-border pt-3">
-            <p className="text-center text-xs text-muted-foreground">
-              ¿Ya eras cliente de Flex Room?{' '}
-              <button
-                type="button"
-                onClick={() => setMode('activate')}
-                className="text-primary font-medium hover:underline"
-              >
-                Activa tu cuenta
-              </button>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
