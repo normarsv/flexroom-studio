@@ -157,14 +157,13 @@ export default function AdminSidebar({
       <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
         <NavGroupSection group={studioGroup} locale={locale} pathname={pathname} />
         <NavGroupSection group={usuariosGroup} locale={locale} pathname={pathname} />
+        <NavGroupSection group={sitioWebGroup} locale={locale} pathname={pathname} />
 
         <div className="space-y-0.5">
           {flatItems.map((item) => (
             <NavLink key={item.href} item={item} locale={locale} pathname={pathname} />
           ))}
         </div>
-
-        <NavGroupSection group={sitioWebGroup} locale={locale} pathname={pathname} />
       </nav>
 
       <div className="p-3 border-t border-border space-y-1">
