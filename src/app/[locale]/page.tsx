@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBolt, faLeaf, faSpa, faLocationDot, faArrowRight } from '@fortawesome/free-solid-svg-icons'
+import { faLocationDot, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import { createClient } from '@/lib/supabase/server'
 import { HomepageContent } from '@/types'
 
@@ -34,6 +34,11 @@ function HomeContent({
     t('about_text')
   const heroImageUrl = homepage?.hero_image_url || null
   const aboutImageUrl = homepage?.about_image_url || null
+  const disciplineImages = [
+    homepage?.discipline1_image_url || null,
+    homepage?.discipline2_image_url || null,
+    homepage?.discipline3_image_url || null,
+  ]
 
   return (
     <div className="overflow-x-hidden">
@@ -181,10 +186,10 @@ function HomeContent({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
             {[
-              { num: '01', icon: faBolt,  title: t('funcional_title'), desc: t('funcional_desc') },
-              { num: '02', icon: faLeaf,  title: t('reformer_title'),  desc: t('reformer_desc') },
-              { num: '03', icon: faSpa,   title: t('barre_title'),     desc: t('barre_desc') },
-            ].map((d) => (
+              { num: '01', title: t('funcional_title'), desc: t('funcional_desc') },
+              { num: '02', title: t('reformer_title'),  desc: t('reformer_desc') },
+              { num: '03', title: t('barre_title'),     desc: t('barre_desc') },
+            ].map((d, i) => (
               <div
                 key={d.num}
                 className="group bg-card rounded-3xl border border-border p-6 md:p-8 flex flex-col
@@ -193,15 +198,19 @@ function HomeContent({
                   hover:-translate-y-2 hover:shadow-xl hover:border-[#F4EF71]/40
                   transition-all duration-300 ease-out"
               >
-                {/* Icon circle */}
-                <div
-                  className="w-16 h-16 rounded-full bg-[#F4EF71]/15 flex items-center justify-center mb-6
-                    group-hover:bg-[#F4EF71] transition-colors duration-300"
-                >
-                  <FontAwesomeIcon
-                    icon={d.icon}
-                    className="w-7 h-7 text-[#868686] group-hover:text-[#1E1E1E] transition-colors duration-300"
-                  />
+                {/* Discipline image */}
+                <div className="w-16 h-16 rounded-full overflow-hidden mb-6 shrink-0 bg-[#F4EF71]/15">
+                  {disciplineImages[i] ? (
+                    <Image
+                      src={disciplineImages[i]!}
+                      alt={d.title}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full" />
+                  )}
                 </div>
 
                 {/* Number */}

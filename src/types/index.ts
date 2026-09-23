@@ -145,6 +145,9 @@ export interface HomepageContent {
   about_text_es: string
   about_text_en: string
   about_image_url: string | null
+  discipline1_image_url: string | null
+  discipline2_image_url: string | null
+  discipline3_image_url: string | null
   updated_at: string
 }
 

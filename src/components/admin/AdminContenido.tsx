@@ -33,10 +33,16 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
   const [aboutTextEs, setAboutTextEs] = useState(homepage?.about_text_es || '')
   const [aboutTextEn, setAboutTextEn] = useState(homepage?.about_text_en || '')
   const [aboutImageUrl, setAboutImageUrl] = useState(homepage?.about_image_url || '')
+  const [discipline1ImageUrl, setDiscipline1ImageUrl] = useState(homepage?.discipline1_image_url || '')
+  const [discipline2ImageUrl, setDiscipline2ImageUrl] = useState(homepage?.discipline2_image_url || '')
+  const [discipline3ImageUrl, setDiscipline3ImageUrl] = useState(homepage?.discipline3_image_url || '')
   const [homepageLoading, setHomepageLoading] = useState(false)
 
   const heroImgRef = useRef<HTMLInputElement>(null)
   const aboutImgRef = useRef<HTMLInputElement>(null)
+  const disc1Ref = useRef<HTMLInputElement>(null)
+  const disc2Ref = useRef<HTMLInputElement>(null)
+  const disc3Ref = useRef<HTMLInputElement>(null)
 
   // Footer state
   const [footerTaglineEs, setFooterTaglineEs] = useState(settings?.footer_tagline_es ?? '')
@@ -71,6 +77,16 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
     if (url) setAboutImageUrl(url)
   }
 
+  async function handleDisciplineImageUpload(e: React.ChangeEvent<HTMLInputElement>, index: 1 | 2 | 3) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadImage(file, `discipline${index}`)
+    if (!url) return
+    if (index === 1) setDiscipline1ImageUrl(url)
+    else if (index === 2) setDiscipline2ImageUrl(url)
+    else setDiscipline3ImageUrl(url)
+  }
+
   async function handleSaveHomepage() {
     setHomepageLoading(true)
     try {
@@ -88,6 +104,9 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
           about_text_es: aboutTextEs,
           about_text_en: aboutTextEn,
           about_image_url: aboutImageUrl || null,
+          discipline1_image_url: discipline1ImageUrl || null,
+          discipline2_image_url: discipline2ImageUrl || null,
+          discipline3_image_url: discipline3ImageUrl || null,
         }),
       })
       if (res.ok) toast.success('Página de inicio actualizada')
@@ -242,6 +261,46 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
                   <p className="text-xs text-muted-foreground mt-2">Recomendado: 800×600 px o más.</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Discipline images */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
+              Imágenes de disciplinas
+            </h3>
+            <p className="text-xs text-muted-foreground">Imagen circular que aparece en cada tarjeta de la sección "Lo que hacemos". Recomendado: cuadrada, 200×200 px o más.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Funcional', url: discipline1ImageUrl, setUrl: setDiscipline1ImageUrl, ref: disc1Ref, index: 1 as const },
+                { label: 'Reformer',  url: discipline2ImageUrl, setUrl: setDiscipline2ImageUrl, ref: disc2Ref, index: 2 as const },
+                { label: 'Barre',     url: discipline3ImageUrl, setUrl: setDiscipline3ImageUrl, ref: disc3Ref, index: 3 as const },
+              ].map((d) => (
+                <div key={d.label} className="flex flex-col items-center gap-2">
+                  <p className="text-xs font-medium text-primary">{d.label}</p>
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden border border-border bg-secondary/50 shrink-0">
+                    {d.url ? (
+                      <>
+                        <Image src={d.url} alt={d.label} fill className="object-cover" />
+                        <button
+                          onClick={() => d.setUrl('')}
+                          className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                        >
+                          <FontAwesomeIcon icon={faTrash} className="w-3 h-3 text-white" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FontAwesomeIcon icon={faUpload} className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <input ref={d.ref} type="file" accept="image/*" className="hidden" onChange={(e) => handleDisciplineImageUpload(e, d.index)} />
+                  <Button variant="outline" size="sm" onClick={() => d.ref.current?.click()} className="rounded-lg text-xs h-7 px-3">
+                    {d.url ? 'Cambiar' : 'Subir'}
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
