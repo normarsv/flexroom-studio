@@ -59,8 +59,9 @@ const sitioWebGroup: NavGroup = {
 
 const flatItems: NavItem[] = [
   { href: 'metrics', label: 'Métricas', icon: faChartBar },
-  { href: 'help',    label: 'Manual',   icon: faCircleQuestion },
 ]
+
+const manualItem: NavItem = { href: 'help', label: 'Manual', icon: faCircleQuestion }
 
 function NavLink({ item, locale, pathname }: { item: NavItem; locale: string; pathname: string }) {
   const href = `/${locale}/admin/${item.href}`
@@ -166,7 +167,8 @@ export default function AdminSidebar({
         <NavGroupSection group={sitioWebGroup} locale={locale} pathname={pathname} />
       </nav>
 
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-1">
+        <NavLink item={manualItem} locale={locale} pathname={pathname} />
         <Link
           href={`/${locale}`}
           className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary"
