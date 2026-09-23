@@ -5,8 +5,8 @@
   "start_url": "/es/classes",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#fcfaf7",
-  "theme_color": "#1a2e5c",
+  "background_color": "#868686",
+  "theme_color": "#1E1E1E",
   "orientation": "portrait",
   "icons": [
     {
