@@ -1,4 +1,4 @@
-export type ClassType = 'funcional' | 'barre' | 'pilates_reformer' | 'pilates_mat' | 'reformer_restaurativo'
+export type ClassType = 'funcional' | 'barre' | 'pilates_reformer' | 'pilates_mat' | 'reformer_restaurativo' | 'pilates_mat_clasico'
 
 export type BookingStatus = 'confirmed' | 'cancelled' | 'waitlist'
 

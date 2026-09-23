@@ -5,7 +5,8 @@ export const CLASS_TYPE_LABELS: Record<ClassType, { es: string; en: string }> = 
   barre: { es: 'Barre', en: 'Barre' },
   pilates_reformer: { es: 'Pilates Reformer', en: 'Pilates Reformer' },
   pilates_mat: { es: 'Pilates Mat', en: 'Pilates Mat' },
-  reformer_restaurativo: { es: 'Reformer Clásico Restaurativo', en: 'Restorative Classic Reformer' },
+  reformer_restaurativo: { es: 'Pilates Reformer Clásico', en: 'Classic Pilates Reformer' },
+  pilates_mat_clasico: { es: 'Pilates Mat Clásico', en: 'Classic Pilates Mat' },
 }
 
 export const CLASS_TYPE_COLORS: Record<ClassType, string> = {
@@ -14,6 +15,7 @@ export const CLASS_TYPE_COLORS: Record<ClassType, string> = {
   pilates_reformer: 'bg-[#F4EF71]/50 text-[#1E1E1E] border-[#F4EF71]/70',
   pilates_mat: 'bg-[#C8C8C8]/40 text-[#1E1E1E] border-[#C8C8C8]/60',
   reformer_restaurativo: 'bg-[#868686]/20 text-[#1E1E1E] border-[#868686]/40',
+  pilates_mat_clasico: 'bg-[#C8C8C8]/30 text-[#1E1E1E] border-[#C8C8C8]/50',
 }
 
 export const SINGLE_SESSION_PRICES_MXN: Record<string, number> = {
@@ -22,6 +24,7 @@ export const SINGLE_SESSION_PRICES_MXN: Record<string, number> = {
   pilates_reformer: 250,
   pilates_mat: 150,
   reformer_restaurativo: 250,
+  pilates_mat_clasico: 150,
 }
 
 export const BRAND = {

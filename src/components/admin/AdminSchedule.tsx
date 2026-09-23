@@ -471,7 +471,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             </p>
             <Button size="sm" onClick={() => openNewTemplate()} className="bg-primary text-primary-foreground shrink-0 ml-4">
               <FontAwesomeIcon icon={faCalendarPlus} className="w-3.5 h-3.5 mr-1.5" />
-              Nueva plantilla
+              Agregar clase
             </Button>
           </div>
 
