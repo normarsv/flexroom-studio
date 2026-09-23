@@ -149,9 +149,31 @@ export default function AdminSidebar({
 
   return (
     <aside className="w-56 bg-white border-r border-border shrink-0 flex flex-col">
-      <div className="p-4 border-b border-border">
-        <p className="font-bold text-primary text-sm">Flex Room</p>
-        <p className="text-xs text-muted-foreground">Admin Panel</p>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div>
+          <p className="font-bold text-primary text-sm">Flex Room</p>
+          <p className="text-xs text-muted-foreground">Admin Panel</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/${locale}/admin/${manualItem.href}`}
+            title="Manual"
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+              pathname === `/${locale}/admin/${manualItem.href}`
+                ? 'bg-[#F4EF71] text-[#1E1E1E]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            <FontAwesomeIcon icon={faCircleQuestion} className="w-4 h-4" />
+          </Link>
+          <Link
+            href={`/${locale}`}
+            title="Ver sitio"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
 
       <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
@@ -165,17 +187,6 @@ export default function AdminSidebar({
           ))}
         </div>
       </nav>
-
-      <div className="p-3 border-t border-border space-y-1">
-        <NavLink item={manualItem} locale={locale} pathname={pathname} />
-        <Link
-          href={`/${locale}`}
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary"
-        >
-          <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
-          Ver sitio
-        </Link>
-      </div>
     </aside>
   )
 }
