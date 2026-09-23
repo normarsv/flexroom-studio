@@ -1,4 +1,15 @@
-export type ClassType = 'funcional' | 'barre' | 'pilates_reformer' | 'pilates_mat' | 'reformer_restaurativo' | 'pilates_mat_clasico'
+export type ClassType = string
+
+export interface ClassTypeConfig {
+  id: string
+  key: string
+  name_es: string
+  name_en: string
+  color: string // hex e.g. '#F4EF71'
+  price_mxn: number
+  is_active: boolean
+  sort_order: number
+}
 
 export type BookingStatus = 'confirmed' | 'cancelled' | 'waitlist'
 

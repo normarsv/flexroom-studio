@@ -4,20 +4,21 @@ import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
-import { ClassSession, ClassType, Instructor } from '@/types'
+import { ClassSession, ClassType, ClassTypeConfig, Instructor } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { toast } from 'sonner'
 
 interface Props {
   session: ClassSession | null
   instructors: Instructor[]
+  classTypes: ClassTypeConfig[]
   locale: string
   onClose: () => void
   onSaved: () => void
   defaultSpecial?: boolean
 }
 
-export default function SessionFormModal({ session, instructors, locale, onClose, onSaved, defaultSpecial = false }: Props) {
+export default function SessionFormModal({ session, instructors, classTypes, locale, onClose, onSaved, defaultSpecial = false }: Props) {
   const isNew = !session
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -149,8 +150,8 @@ export default function SessionFormModal({ session, instructors, locale, onClose
               onChange={(e) => setForm({ ...form, class_type: e.target.value as ClassType })}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              {Object.entries(CLASS_TYPE_LABELS).map(([type, labels]) => (
-                <option key={type} value={type}>{labels.es}</option>
+              {(classTypes.length > 0 ? classTypes : Object.entries(CLASS_TYPE_LABELS).map(([key, val]) => ({ key, name_es: val.es }))).map((ct: any) => (
+                <option key={ct.key} value={ct.key}>{ct.name_es}</option>
               ))}
             </select>
           </div>
@@ -163,7 +164,7 @@ export default function SessionFormModal({ session, instructors, locale, onClose
               type="text"
               value={form.custom_title}
               onChange={(e) => setForm({ ...form, custom_title: e.target.value })}
-              placeholder={CLASS_TYPE_LABELS[form.class_type]?.es || form.class_type}
+              placeholder={classTypes.find(ct => ct.key === form.class_type)?.name_es || CLASS_TYPE_LABELS[form.class_type]?.es || form.class_type}
               className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             <p className="text-xs text-muted-foreground mt-1">Si se deja vacío, se muestra el nombre del tipo de clase.</p>

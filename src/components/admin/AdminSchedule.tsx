@@ -7,7 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ClassSession, ClassType, Instructor, RecurringTemplate } from '@/types'
+import { ClassSession, ClassType, ClassTypeConfig, Instructor, RecurringTemplate } from '@/types'
 import { CLASS_TYPE_LABELS, CLASS_TYPE_COLORS, DAYS_OF_WEEK } from '@/lib/constants'
 import { toast } from 'sonner'
 import SessionFormModal from './SessionFormModal'
@@ -18,16 +18,39 @@ interface Props {
   templates: RecurringTemplate[]
   requests: any[]
   events: ClassSession[]
+  classTypes: ClassTypeConfig[]
   locale: string
   isAdmin?: boolean
 }
 
-export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, events: initialEvents, locale, isAdmin = false }: Props) {
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, events: initialEvents, classTypes: initialClassTypes, locale, isAdmin = false }: Props) {
   const [sessions, setSessions] = useState(initial)
   const [templates, setTemplates] = useState(initialTemplates)
   const [requestList, setRequestList] = useState(requests)
   const [events, setEvents] = useState(initialEvents)
-  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events'>('upcoming')
+  const [classTypes, setClassTypes] = useState<ClassTypeConfig[]>(initialClassTypes)
+  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events' | 'types'>('upcoming')
+
+  // Helpers for dynamic class type display
+  const getTypeLabel = (key: string) =>
+    classTypes.find(ct => ct.key === key)?.name_es || CLASS_TYPE_LABELS[key as keyof typeof CLASS_TYPE_LABELS]?.es || key
+  const getTypeBadgeStyle = (key: string) => {
+    const ct = classTypes.find(c => c.key === key)
+    const hex = ct?.color || '#868686'
+    return { background: hexToRgba(hex, 0.2), borderColor: hexToRgba(hex, 0.5), color: '#1E1E1E' }
+  }
+
+  // Class types management state
+  const [typeForm, setTypeForm] = useState({ name_es: '', name_en: '', color: '#F4EF71', price_mxn: 150 })
+  const [savingType, setSavingType] = useState(false)
+  const [editingType, setEditingType] = useState<ClassTypeConfig | null>(null)
   const [editingSession, setEditingSession] = useState<ClassSession | null | 'new'>(null)
   const [generatingWeeks, setGeneratingWeeks] = useState(false)
   const [templateModal, setTemplateModal] = useState<RecurringTemplate | null | 'new'>(null)
@@ -295,6 +318,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             { key: 'events', label: `✨ Eventos${events.length > 0 ? ` (${events.length})` : ''}` },
             { key: 'recurring', label: 'Plantillas semanales' },
             { key: 'requests', label: `Solicitudes${requestList.filter(r => !r.acknowledged).length > 0 ? ` (${requestList.filter(r => !r.acknowledged).length})` : ''}` },
+            { key: 'types', label: 'Tipos de clase' },
           ] as { key: typeof tab; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
@@ -317,8 +341,8 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               </h3>
               <div className="bg-white rounded-xl border border-border overflow-hidden">
                 {sessionsByDate[dateStr].map((session, idx) => {
-                  const label = CLASS_TYPE_LABELS[session.class_type]
-                  const color = CLASS_TYPE_COLORS[session.class_type]
+                  const label = { es: getTypeLabel(session.class_type) }
+                  const badgeStyle = getTypeBadgeStyle(session.class_type)
                   return (
                     <div key={session.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''} ${(session as any).is_special ? 'bg-[#F4EF71]/10' : ''}`}>
                       {(session as any).is_special ? (
@@ -326,7 +350,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           ✨ {(session as any).event_type_label || 'Especial'}
                         </span>
                       ) : (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${color}`}>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={badgeStyle}>
                           {label.es}
                         </span>
                       )}
@@ -494,11 +518,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                 ) : (
                   <div className="bg-white rounded-xl border border-border overflow-hidden">
                     {dayTemplates.map((t, idx) => {
-                      const label = CLASS_TYPE_LABELS[t.class_type]
-                      const color = CLASS_TYPE_COLORS[t.class_type]
                       return (
                         <div key={t.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''}`}>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${color}`}>{label.es}</span>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={getTypeBadgeStyle(t.class_type)}>{getTypeLabel(t.class_type)}</span>
                           <span className="text-sm font-medium text-primary">{t.start_time.slice(0, 5)}</span>
                           <span className="text-sm text-muted-foreground">{(t as any).instructor?.name}</span>
                           <span className="text-xs text-muted-foreground">Cap: {t.capacity}</span>
@@ -548,7 +570,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                     )}
                     {req.class_type && (
                       <p className="text-xs text-muted-foreground">
-                        {CLASS_TYPE_LABELS[req.class_type as keyof typeof CLASS_TYPE_LABELS]?.es}
+                        {getTypeLabel(req.class_type)}
                       </p>
                     )}
                     {req.message && (
@@ -642,8 +664,8 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   onChange={(e) => setTemplateForm((f) => ({ ...f, class_type: e.target.value as ClassType }))}
                   className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  {Object.entries(CLASS_TYPE_LABELS).map(([key, val]) => (
-                    <option key={key} value={key}>{val.es}</option>
+                  {(classTypes.length > 0 ? classTypes : Object.entries(CLASS_TYPE_LABELS).map(([key, val]) => ({ key, name_es: val.es }))).map((ct: any) => (
+                    <option key={ct.key} value={ct.key}>{ct.name_es}</option>
                   ))}
                 </select>
               </div>
@@ -694,7 +716,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               <div>
                 <h2 className="font-semibold text-primary">Lista de asistencia</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {CLASS_TYPE_LABELS[attendanceSession.class_type]?.es} · {attendanceSession.start_time.slice(0, 5)} · {format(parseISO(attendanceSession.date), "d 'de' MMMM", { locale: es })}
+                  {getTypeLabel(attendanceSession.class_type)} · {attendanceSession.start_time.slice(0, 5)} · {format(parseISO(attendanceSession.date), "d 'de' MMMM", { locale: es })}
                 </p>
               </div>
               <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false) }} className="text-muted-foreground hover:text-primary p-1">
@@ -971,10 +993,171 @@ export default function AdminSchedule({ sessions: initial, instructors, template
         </div>
       )}
 
+      {/* ── TIPOS DE CLASE ─────────────────────────────────── */}
+      {tab === 'types' && (
+        <div className="space-y-6">
+          {/* List */}
+          <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+            {classTypes.filter(ct => ct.is_active).length === 0 ? (
+              <p className="text-sm text-muted-foreground p-6">No hay tipos de clase. Agrega uno abajo.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/50">
+                    <th className="text-left px-4 py-3 font-medium text-primary">Tipo</th>
+                    <th className="text-left px-4 py-3 font-medium text-primary">Nombre (ES)</th>
+                    <th className="text-left px-4 py-3 font-medium text-primary">Nombre (EN)</th>
+                    <th className="text-left px-4 py-3 font-medium text-primary">Precio MXN</th>
+                    <th className="text-left px-4 py-3 font-medium text-primary">Color</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {classTypes.filter(ct => ct.is_active).map((ct) => (
+                    <tr key={ct.id} className="hover:bg-secondary/20">
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={getTypeBadgeStyle(ct.key)}>
+                          {ct.name_es}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-primary">
+                        {editingType?.id === ct.id ? (
+                          <input value={editingType.name_es} onChange={(e) => setEditingType({ ...editingType, name_es: e.target.value })}
+                            className="w-full px-2 py-1 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                        ) : ct.name_es}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {editingType?.id === ct.id ? (
+                          <input value={editingType.name_en} onChange={(e) => setEditingType({ ...editingType, name_en: e.target.value })}
+                            className="w-full px-2 py-1 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                        ) : ct.name_en}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {editingType?.id === ct.id ? (
+                          <input type="number" value={editingType.price_mxn} onChange={(e) => setEditingType({ ...editingType, price_mxn: Number(e.target.value) })}
+                            className="w-20 px-2 py-1 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                        ) : `$${ct.price_mxn}`}
+                      </td>
+                      <td className="px-4 py-3">
+                        {editingType?.id === ct.id ? (
+                          <input type="color" value={editingType.color} onChange={(e) => setEditingType({ ...editingType, color: e.target.value })}
+                            className="w-8 h-8 rounded cursor-pointer border-0 p-0" />
+                        ) : (
+                          <span className="inline-block w-5 h-5 rounded-full border border-border" style={{ background: ct.color }} />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 justify-end">
+                          {editingType?.id === ct.id ? (
+                            <>
+                              <Button size="sm" className="bg-primary text-primary-foreground" onClick={async () => {
+                                setSavingType(true)
+                                const res = await fetch(`/api/admin/class-types/${ct.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ name_es: editingType.name_es, name_en: editingType.name_en, color: editingType.color, price_mxn: editingType.price_mxn }),
+                                })
+                                if (res.ok) {
+                                  const updated = await res.json()
+                                  setClassTypes(prev => prev.map(c => c.id === updated.id ? updated : c))
+                                  setEditingType(null)
+                                  toast.success('Tipo actualizado')
+                                } else toast.error('Error al guardar')
+                                setSavingType(false)
+                              }} disabled={savingType}>Guardar</Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditingType(null)}>Cancelar</Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingType({ ...ct })}>
+                                <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => {
+                                if (!confirm(`¿Desactivar "${ct.name_es}"? Las clases existentes no se verán afectadas.`)) return
+                                const res = await fetch(`/api/admin/class-types/${ct.id}`, { method: 'DELETE' })
+                                if (res.ok) {
+                                  setClassTypes(prev => prev.map(c => c.id === ct.id ? { ...c, is_active: false } : c))
+                                  toast.success('Tipo desactivado')
+                                } else toast.error('Error al desactivar')
+                              }}>
+                                <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Add new type form */}
+          <div className="bg-white rounded-xl border border-border shadow-sm p-6">
+            <h3 className="text-sm font-semibold text-primary mb-4">Agregar tipo de clase</h3>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Nombre en español *</label>
+                <input value={typeForm.name_es} onChange={(e) => setTypeForm(f => ({ ...f, name_es: e.target.value }))}
+                  placeholder="Ej: Yoga Restaurativo"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Nombre en inglés</label>
+                <input value={typeForm.name_en} onChange={(e) => setTypeForm(f => ({ ...f, name_en: e.target.value }))}
+                  placeholder="Ej: Restorative Yoga"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Precio por sesión (MXN)</label>
+                <input type="number" value={typeForm.price_mxn} onChange={(e) => setTypeForm(f => ({ ...f, price_mxn: Number(e.target.value) }))}
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Color del badge</label>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={typeForm.color} onChange={(e) => setTypeForm(f => ({ ...f, color: e.target.value }))}
+                    className="w-10 h-10 rounded cursor-pointer border border-border p-0.5" />
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={{ background: hexToRgba(typeForm.color, 0.2), borderColor: hexToRgba(typeForm.color, 0.5), color: '#1E1E1E' }}>
+                    {typeForm.name_es || 'Vista previa'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Button
+              className="bg-primary text-primary-foreground"
+              disabled={savingType || !typeForm.name_es}
+              onClick={async () => {
+                setSavingType(true)
+                const res = await fetch('/api/admin/class-types', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(typeForm),
+                })
+                if (res.ok) {
+                  const newType = await res.json()
+                  setClassTypes(prev => [...prev, newType])
+                  setTypeForm({ name_es: '', name_en: '', color: '#F4EF71', price_mxn: 150 })
+                  toast.success('Tipo de clase agregado')
+                } else {
+                  const err = await res.json()
+                  toast.error(err.error || 'Error al guardar')
+                }
+                setSavingType(false)
+              }}
+            >
+              {savingType ? 'Guardando...' : 'Agregar tipo'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {editingSession !== null && (
         <SessionFormModal
           session={editingSession === 'new' ? null : editingSession}
           instructors={instructors}
+          classTypes={classTypes}
           locale={locale}
           defaultSpecial={tab === 'events'}
           onClose={() => setEditingSession(null)}

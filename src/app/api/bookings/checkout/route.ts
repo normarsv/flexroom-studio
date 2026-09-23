@@ -33,9 +33,13 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  const basePrice = SINGLE_SESSION_PRICES_MXN[session.class_type]
-  const label = CLASS_TYPE_LABELS[session.class_type as keyof typeof CLASS_TYPE_LABELS]
-  const className = locale === 'es' ? label.es : label.en
+  // Look up price and label from DB class_types, fall back to constants
+  const { data: classTypeData } = await supabase.from('class_types').select('name_es, name_en, price_mxn').eq('key', session.class_type).single()
+  const basePrice = classTypeData?.price_mxn ?? SINGLE_SESSION_PRICES_MXN[session.class_type] ?? 150
+  const fallbackLabel = CLASS_TYPE_LABELS[session.class_type as keyof typeof CLASS_TYPE_LABELS]
+  const className = locale === 'es'
+    ? (classTypeData?.name_es ?? fallbackLabel?.es ?? session.class_type)
+    : (classTypeData?.name_en ?? fallbackLabel?.en ?? session.class_type)
 
   // Apply coupon discount if provided
   let finalPrice: number = basePrice

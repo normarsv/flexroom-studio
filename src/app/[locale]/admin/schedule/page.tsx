@@ -19,7 +19,7 @@ export default async function AdminSchedulePage({
 
   const todayStr = today.toISOString().split('T')[0]
 
-  const [sessionsRes, instructorsRes, templatesRes, requestsRes, eventsRes] = await Promise.all([
+  const [sessionsRes, instructorsRes, templatesRes, requestsRes, eventsRes, classTypesRes] = await Promise.all([
     supabase
       .from('class_sessions')
       .select('*, instructor:instructors(*)')
@@ -45,6 +45,7 @@ export default async function AdminSchedulePage({
       .eq('is_special', true)
       .order('date')
       .order('start_time'),
+    supabase.from('class_types').select('*').order('sort_order'),
   ])
 
   return (
@@ -54,6 +55,7 @@ export default async function AdminSchedulePage({
       templates={templatesRes.data || []}
       requests={requestsRes.data || []}
       events={eventsRes.data || []}
+      classTypes={classTypesRes.data || []}
       locale={locale}
       isAdmin={isAdmin}
     />

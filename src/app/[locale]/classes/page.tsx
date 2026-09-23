@@ -85,11 +85,10 @@ export default async function ClassesPage({
     }
   }
 
-  const { data: studioSettings } = await supabase
-    .from('studio_settings')
-    .select('station_map_url')
-    .eq('id', 1)
-    .single()
+  const [{ data: studioSettings }, { data: classTypes }] = await Promise.all([
+    supabase.from('studio_settings').select('station_map_url').eq('id', 1).single(),
+    supabase.from('class_types').select('*').eq('is_active', true).order('sort_order'),
+  ])
 
   return (
     <ClassSchedule
@@ -103,6 +102,7 @@ export default async function ClassesPage({
       credits={credits}
       takenStations={takenStations}
       stationMapUrl={studioSettings?.station_map_url ?? null}
+      classTypes={classTypes || []}
     />
   )
 }

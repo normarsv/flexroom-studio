@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClock, faUsers, faChevronRight, faCircleCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ClassSession, ClassType, UserPackage } from '@/types'
+import { ClassSession, ClassType, ClassTypeConfig, UserPackage } from '@/types'
 import { CLASS_TYPE_LABELS, CLASS_TYPE_COLORS } from '@/lib/constants'
 import BookingModal from './BookingModal'
 import RequestClassModal from './RequestClassModal'
@@ -25,9 +25,27 @@ interface Props {
   credits: { id: string; class_type: string }[]
   takenStations: Record<string, number[]>
   stationMapUrl: string | null
+  classTypes: ClassTypeConfig[]
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl }: Props) {
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl, classTypes }: Props) {
+  const getTypeLabel = (key: string, loc: string) => {
+    const ct = classTypes.find(c => c.key === key)
+    if (ct) return loc === 'es' ? ct.name_es : ct.name_en
+    return loc === 'es' ? (CLASS_TYPE_LABELS[key as ClassType]?.es || key) : (CLASS_TYPE_LABELS[key as ClassType]?.en || key)
+  }
+  const getTypeBadgeStyle = (key: string) => {
+    const ct = classTypes.find(c => c.key === key)
+    const hex = ct?.color || '#868686'
+    return { background: hexToRgba(hex, 0.2), borderColor: hexToRgba(hex, 0.5), color: '#1E1E1E' }
+  }
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const router = useRouter()
@@ -294,17 +312,17 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
         >
           {locale === 'es' ? 'Todas' : 'All'}
         </button>
-        {(Object.keys(CLASS_TYPE_LABELS) as ClassType[]).map((type) => (
+        {(classTypes.length > 0 ? classTypes.filter(ct => ct.is_active) : Object.entries(CLASS_TYPE_LABELS).map(([key, val]) => ({ key, name_es: val.es, name_en: val.en }))).map((ct: any) => (
           <button
-            key={type}
-            onClick={() => { setFilterType(type); setFilterSpecial(false) }}
+            key={ct.key}
+            onClick={() => { setFilterType(ct.key); setFilterSpecial(false) }}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all
-              ${filterType === type && !filterSpecial
+              ${filterType === ct.key && !filterSpecial
                 ? 'bg-[#1E1E1E] border-[#1E1E1E] text-white'
                 : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
               }`}
           >
-            {locale === 'es' ? CLASS_TYPE_LABELS[type].es : CLASS_TYPE_LABELS[type].en}
+            {locale === 'es' ? ct.name_es : ct.name_en}
           </button>
         ))}
         <button
@@ -343,8 +361,6 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
         {daySessions.map((session) => {
           const spotsLeft = (session.capacity - (session.blocked_stations?.length ?? 0)) - session.spots_booked
           const isFull = spotsLeft <= 0
-          const classLabel = CLASS_TYPE_LABELS[session.class_type]
-          const colorClass = CLASS_TYPE_COLORS[session.class_type]
           const sessionDateTime = new Date(`${session.date}T${session.start_time}`)
           const isPast = sessionDateTime < new Date()
           const isBooked = localBookedIds.includes(session.id)
@@ -354,7 +370,8 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           const eventTitle = (session as any).event_title as string | null
           const eventDescription = (session as any).event_description as string | null
           const eventTypeLabel = (session as any).event_type_label as string | null
-          const displayTitle = customTitle || (isSpecial ? eventTitle : null) || (locale === 'es' ? classLabel?.es : classLabel?.en) || session.class_type
+          const displayTitle = customTitle || (isSpecial ? eventTitle : null) || getTypeLabel(session.class_type, locale)
+          const badgeStyle = getTypeBadgeStyle(session.class_type)
 
           const timeDisplay = (() => {
             const [h, m] = session.start_time.split(':').map(Number)
@@ -472,8 +489,8 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${colorClass}`}>
-                    {locale === 'es' ? classLabel.es : classLabel.en}
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full border" style={badgeStyle}>
+                    {getTypeLabel(session.class_type, locale)}
                   </span>
                   {session.instructor && (
                     <span className="text-sm text-muted-foreground">
