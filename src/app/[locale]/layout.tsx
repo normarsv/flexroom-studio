@@ -31,7 +31,7 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages}>
       <div className="flex flex-col min-h-screen">
         <Navbar locale={locale} />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-16 md:pb-0">{children}</main>
         <Footer settings={settings} />
         <Toaster richColors position="top-center" />
       </div>

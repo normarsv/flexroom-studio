@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,10 @@ import { HomepageContent } from '@/types'
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) redirect(`/${locale}/account`)
+
   const { data: homepage } = await supabase.from('homepage_content').select('*').single()
   const t = await getTranslations({ locale, namespace: 'home' })
 

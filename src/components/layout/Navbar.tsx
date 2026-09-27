@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBars, faXmark, faGlobe, faDownload } from '@fortawesome/free-solid-svg-icons'
+import { faBars, faXmark, faGlobe, faDownload, faHouse, faCalendarDays, faBox, faUser, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { BRAND } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
@@ -171,10 +171,13 @@ export default function Navbar({ locale }: { locale: string }) {
           </button>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile menu — secondary items only (primary nav is in bottom bar) */}
         {menuOpen && (
           <div className="md:hidden border-t border-border py-3 space-y-1">
-            {navLinks.map((link) => {
+            {[
+              { href: `/${locale}/coaches`, label: t('coaches') },
+              { href: `/${locale}/gallery`, label: t('gallery') },
+            ].map((link) => {
               const isActive = pathname === link.href
               return (
                 <Link
@@ -206,19 +209,8 @@ export default function Navbar({ locale }: { locale: string }) {
                 <FontAwesomeIcon icon={faGlobe} className="w-4 h-4" />
                 {otherLocale === 'es' ? 'Español' : 'English'}
               </button>
-              {user ? (
-                <>
-                  {!user.isAdmin && (
-                    <Link href={`/${locale}/account`} onClick={() => setMenuOpen(false)}>
-                      <Button variant="outline" size="sm" className="w-full">{t('account')}</Button>
-                    </Link>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">{t('logout')}</Button>
-                </>
-              ) : (
-                <Link href={`/${locale}/login`} onClick={() => setMenuOpen(false)}>
-                  <Button size="sm" className="w-full bg-primary text-primary-foreground font-semibold">{t('login')}</Button>
-                </Link>
+              {user && (
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="w-full">{t('logout')}</Button>
               )}
             </div>
           </div>
@@ -226,6 +218,36 @@ export default function Navbar({ locale }: { locale: string }) {
       </div>
 
     </header>
+
+      {/* Bottom nav — mobile only */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="flex items-stretch h-16">
+          {[
+            { href: `/${locale}`, icon: faHouse, labelEs: 'Inicio', labelEn: 'Home' },
+            { href: `/${locale}/classes`, icon: faCalendarDays, labelEs: 'Clases', labelEn: 'Classes' },
+            { href: `/${locale}/packages`, icon: faBox, labelEs: 'Membresías', labelEn: 'Plans' },
+            user
+              ? { href: `/${locale}/account`, icon: faUser, labelEs: 'Mi cuenta', labelEn: 'Account' }
+              : { href: `/${locale}/login`, icon: faRightToBracket, labelEs: 'Entrar', labelEn: 'Login' },
+          ].map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors ${
+                  isActive ? 'text-[#1E1E1E]' : 'text-muted-foreground'
+                }`}
+              >
+                <span className={`flex items-center justify-center w-8 h-6 rounded-full transition-colors ${isActive ? 'bg-[#F4EF71]' : ''}`}>
+                  <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                </span>
+                {locale === 'es' ? item.labelEs : item.labelEn}
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
 
       {/* iOS install instructions modal — outside <header> to avoid backdrop-filter clipping fixed position */}
       {showIOSInstructions && (
