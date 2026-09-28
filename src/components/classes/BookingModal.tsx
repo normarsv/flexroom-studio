@@ -165,8 +165,12 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm md:p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:max-w-md max-h-[92vh] overflow-y-auto p-6 relative">
+        {/* Drag handle — mobile only */}
+        <div className="md:hidden flex justify-center mb-4 -mt-2">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-muted-foreground hover:text-primary"

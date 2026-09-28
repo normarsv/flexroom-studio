@@ -107,13 +107,13 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
     const classLabel = CLASS_TYPE_LABELS[session.class_type as keyof typeof CLASS_TYPE_LABELS]
 
     return (
-      <div className="flex items-center justify-between p-4 border-b border-border last:border-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border-b border-border last:border-0 gap-2">
         <div>
           <p className="font-medium text-primary text-sm">
             {locale === 'es' ? classLabel?.es : classLabel?.en}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {format(sessionDate, "EEEE d 'de' MMMM, HH:mm", { locale: dateLocale })}
+            {format(sessionDate, "EEE d MMM, HH:mm", { locale: dateLocale })}
             {session.instructor && ` · ${session.instructor.name}`}
           </p>
         </div>
@@ -123,7 +123,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
             size="sm"
             onClick={() => handleCancelClick(booking.id, session.date, session.start_time)}
             disabled={cancellingId === booking.id}
-            className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
+            className="self-start sm:self-auto text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
           >
             {cancellingId === booking.id ? '...' : t('cancel_booking')}
           </Button>
@@ -177,33 +177,22 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
 
       {/* Tabs */}
       <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
-        <button
-          onClick={() => setTab('bookings')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-            tab === 'bookings' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
-          }`}
-        >
-          <FontAwesomeIcon icon={faCalendarDays} className="w-4 h-4" />
-          {t('my_bookings')}
-        </button>
-        <button
-          onClick={() => setTab('packages')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-            tab === 'packages' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
-          }`}
-        >
-          <FontAwesomeIcon icon={faBox} className="w-4 h-4" />
-          {t('my_packages')}
-        </button>
-        <button
-          onClick={() => setTab('details')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
-            tab === 'details' ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
-          }`}
-        >
-          <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
-          {locale === 'es' ? 'Mis datos' : 'My details'}
-        </button>
+        {([
+          { key: 'bookings', icon: faCalendarDays, labelEs: t('my_bookings'), labelEn: t('my_bookings') },
+          { key: 'packages', icon: faBox, labelEs: t('my_packages'), labelEn: t('my_packages') },
+          { key: 'details', icon: faUser, labelEs: 'Mis datos', labelEn: 'My details' },
+        ] as const).map(({ key, icon, labelEs }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
+            }`}
+          >
+            <FontAwesomeIcon icon={icon} className="w-4 h-4" />
+            <span className="hidden sm:inline">{labelEs}</span>
+          </button>
+        ))}
       </div>
 
       {/* Bookings tab */}
