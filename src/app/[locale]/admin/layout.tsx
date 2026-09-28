@@ -22,7 +22,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen bg-secondary/30">
       <AdminSidebar locale={locale} isAdmin={isAdmin} isCoach={isCoach} />
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-4 md:p-6 overflow-auto mt-14 md:mt-0">
         {children}
       </div>
     </div>

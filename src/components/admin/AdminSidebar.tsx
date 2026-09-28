@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -17,6 +17,8 @@ import {
   faImage,
   faUserShield,
   faChevronDown,
+  faBars,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
@@ -125,30 +127,58 @@ export default function AdminSidebar({
   isCoach?: boolean
 }) {
   const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const prevPathname = useRef(pathname)
   const coachOnly = isCoach && !isAdmin
 
-  if (coachOnly) {
-    return (
-      <aside className="w-56 bg-white border-r border-border shrink-0 flex flex-col">
-        <div className="p-4 border-b border-border">
+  // Auto-close drawer on navigation
+  useEffect(() => {
+    if (pathname !== prevPathname.current) {
+      setMobileOpen(false)
+      prevPathname.current = pathname
+    }
+  }, [pathname])
+
+  // Derive current page label for the mobile top bar
+  const allItems = [
+    ...studioGroup.items,
+    ...usuariosGroup.items,
+    ...sitioWebGroup.items,
+    ...flatItems,
+    manualItem,
+  ]
+  const activeItem = allItems.find((item) => {
+    const href = `/${locale}/admin/${item.href}`
+    return pathname === href || pathname.startsWith(`${href}/`)
+  })
+  const pageTitle = activeItem?.label ?? (coachOnly ? 'Coach' : 'Admin')
+
+  const sidebarInner = coachOnly ? (
+    <>
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <div>
           <p className="font-bold text-primary text-sm">Flex Room</p>
           <p className="text-xs text-muted-foreground">Coach</p>
         </div>
-        <nav className="flex-1 p-3">
-          <NavLink item={studioGroup.items[0]} locale={locale} pathname={pathname} />
-        </nav>
-        <div className="p-3 border-t border-border">
-          <Link href={`/${locale}`} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary">
-            <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
-            Ver sitio
-          </Link>
-        </div>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="w-56 bg-white border-r border-border shrink-0 flex flex-col">
+        <button
+          className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-secondary"
+          onClick={() => setMobileOpen(false)}
+        >
+          <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+        </button>
+      </div>
+      <nav className="flex-1 p-3">
+        <NavLink item={studioGroup.items[0]} locale={locale} pathname={pathname} />
+      </nav>
+      <div className="p-3 border-t border-border">
+        <Link href={`/${locale}`} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary">
+          <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
+          Ver sitio
+        </Link>
+      </div>
+    </>
+  ) : (
+    <>
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
           <p className="font-bold text-primary text-sm">Flex Room</p>
@@ -173,6 +203,12 @@ export default function AdminSidebar({
           >
             <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
           </Link>
+          <button
+            className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary"
+            onClick={() => setMobileOpen(false)}
+          >
+            <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -187,6 +223,47 @@ export default function AdminSidebar({
           ))}
         </div>
       </nav>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-border flex items-center px-4 gap-3">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary"
+        >
+          <FontAwesomeIcon icon={faBars} className="w-5 h-5" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-sm text-primary truncate">{pageTitle}</p>
+        </div>
+        <Link
+          href={`/${locale}`}
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary"
+        >
+          <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Backdrop */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — drawer on mobile, static on desktop */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-border flex flex-col
+        transition-transform duration-200
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:relative md:translate-x-0 md:w-56 md:z-auto md:shrink-0
+      `}>
+        {sidebarInner}
+      </aside>
+    </>
   )
 }
