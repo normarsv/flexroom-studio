@@ -26,7 +26,18 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
   const tCommon = useTranslations('common')
   const dateLocale = locale === 'es' ? es : enUS
   const [tab, setTab] = useState<'bookings' | 'packages' | 'details'>('bookings')
-  const [phone, setPhone] = useState(profile?.phone || '')
+  const COUNTRY_CODES = ['52', '1', '34', '44']
+  function parsePhone(raw: string | null) {
+    if (!raw) return { code: '52', local: '' }
+    const digits = raw.replace(/\D/g, '')
+    for (const code of COUNTRY_CODES) {
+      if (digits.startsWith(code)) return { code, local: digits.slice(code.length) }
+    }
+    return { code: '52', local: digits }
+  }
+  const parsed = parsePhone(profile?.phone || null)
+  const [countryCode, setCountryCode] = useState(parsed.code)
+  const [phone, setPhone] = useState(parsed.local)
   const [savingDetails, setSavingDetails] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [confirmBooking, setConfirmBooking] = useState<{ id: string; willLose: boolean } | null>(null)
@@ -79,7 +90,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       const res = await fetch('/api/account/details', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone: `+${countryCode}${phone.replace(/\D/g, '')}` }),
       })
       if (res.ok) toast.success(locale === 'es' ? 'Datos actualizados' : 'Details updated')
       else toast.error(locale === 'es' ? 'Error al guardar' : 'Error saving')
@@ -297,14 +308,26 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
               <label className="text-xs font-medium text-primary block mb-1">
                 {locale === 'es' ? 'Teléfono' : 'Phone'}
               </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={locale === 'es' ? '+52 967 123 4567' : '+52 967 123 4567'}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="px-2 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 shrink-0"
+                >
+                  <option value="52">🇲🇽 +52</option>
+                  <option value="1">🇺🇸 +1</option>
+                  <option value="34">🇪🇸 +34</option>
+                  <option value="44">🇬🇧 +44</option>
+                </select>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="967 127 4725"
+                  required
+                  className="flex-1 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
             </div>
             <Button
               type="submit"

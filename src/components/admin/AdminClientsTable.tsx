@@ -141,7 +141,9 @@ export default function AdminClientsTable({
 
   function sendWhatsapp() {
     if (!whatsappClient?.phone || !whatsappMessage.trim()) return
-    const digits = whatsappClient.phone.replace(/\D/g, '')
+    let digits = whatsappClient.phone.replace(/\D/g, '')
+    // Bare 10-digit number has no country code — assume Mexico
+    if (digits.length === 10) digits = `52${digits}`
     const url = `https://wa.me/${digits}?text=${encodeURIComponent(whatsappMessage.trim())}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }

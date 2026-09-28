@@ -17,6 +17,7 @@ export default function LoginForm({ locale }: { locale: string }) {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
+  const [countryCode, setCountryCode] = useState('52')
 
   async function handleGoogle() {
     const supabase = createClient()
@@ -53,7 +54,7 @@ export default function LoginForm({ locale }: { locale: string }) {
           email,
           password,
           options: {
-            data: { full_name: fullName, phone },
+            data: { full_name: fullName, phone: `+${countryCode}${phone.replace(/\D/g, '')}` },
             emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}`,
           },
         })
@@ -177,14 +178,26 @@ export default function LoginForm({ locale }: { locale: string }) {
                 required
                 className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
-              <input
-                type="tel"
-                placeholder={t('phone')}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="px-2 py-2 rounded-lg border border-border text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 shrink-0"
+                >
+                  <option value="52">🇲🇽 +52</option>
+                  <option value="1">🇺🇸 +1</option>
+                  <option value="34">🇪🇸 +34</option>
+                  <option value="44">🇬🇧 +44</option>
+                </select>
+                <input
+                  type="tel"
+                  placeholder={t('phone')}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  className="flex-1 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
             </>
           )}
           <input
