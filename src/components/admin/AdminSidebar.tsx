@@ -19,6 +19,7 @@ import {
   faChevronDown,
   faBars,
   faXmark,
+  faMoneyBill,
 } from '@fortawesome/free-solid-svg-icons'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
@@ -56,6 +57,13 @@ const sitioWebGroup: NavGroup = {
   items: [
     { href: 'contenido', label: 'Contenido',     icon: faImage },
     { href: 'content',   label: 'Configuración', icon: faFileLines },
+  ],
+}
+
+const finanzasGroup: NavGroup = {
+  label: 'Finanzas',
+  items: [
+    { href: 'payroll', label: 'Nómina', icon: faMoneyBill },
   ],
 }
 
@@ -144,6 +152,7 @@ export default function AdminSidebar({
     ...studioGroup.items,
     ...usuariosGroup.items,
     ...sitioWebGroup.items,
+    ...finanzasGroup.items,
     ...flatItems,
     manualItem,
   ]
@@ -216,6 +225,7 @@ export default function AdminSidebar({
         <NavGroupSection group={studioGroup} locale={locale} pathname={pathname} />
         <NavGroupSection group={usuariosGroup} locale={locale} pathname={pathname} />
         <NavGroupSection group={sitioWebGroup} locale={locale} pathname={pathname} />
+        <NavGroupSection group={finanzasGroup} locale={locale} pathname={pathname} />
 
         <div className="space-y-0.5">
           {flatItems.map((item) => (

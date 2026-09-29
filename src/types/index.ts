@@ -7,6 +7,7 @@ export interface ClassTypeConfig {
   name_en: string
   color: string // hex e.g. '#F4EF71'
   price_mxn: number
+  instructor_rate_mxn: number
   is_active: boolean
   sort_order: number
 }
@@ -44,6 +45,16 @@ export interface ClassSession {
   event_type_label: string | null
   created_at: string
   blocked_stations: number[]
+  instructor_paid_at: string | null
+  instructor_payment_notes: string | null
+}
+
+export interface InstructorRateOverride {
+  id: string
+  instructor_id: string
+  class_type: string
+  rate_mxn: number
+  created_at: string
 }
 
 export interface RecurringTemplate {
