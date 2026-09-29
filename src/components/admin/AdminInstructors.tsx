@@ -22,6 +22,7 @@ const empty = {
   bio: '',
   photo_url: '',
   specialties: [] as ClassType[],
+  level: null as 'junior' | 'senior' | null,
 }
 
 export default function AdminInstructors({ instructors: initial, locale }: Props) {
@@ -33,7 +34,7 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
 
   function openNew() { setForm(empty); setEditing('new') }
   function openEdit(i: Instructor) {
-    setForm({ name: i.name, bio: i.bio || '', photo_url: i.photo_url || '', specialties: i.specialties || [] })
+    setForm({ name: i.name, bio: i.bio || '', photo_url: i.photo_url || '', specialties: i.specialties || [], level: i.level || null })
     setEditing(i)
   }
 
@@ -120,7 +121,18 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-primary">{instructor.name}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-primary">{instructor.name}</p>
+                {instructor.level && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    instructor.level === 'senior'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground'
+                  }`}>
+                    {instructor.level === 'senior' ? 'Senior' : 'Junior'}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1 mt-1">
                 {(instructor.specialties || []).map((t) => (
                   <span key={t} className="text-xs bg-secondary text-primary px-1.5 py-0.5 rounded-full">
@@ -169,6 +181,18 @@ export default function AdminInstructors({ instructors: initial, locale }: Props
               <div>
                 <label className="text-xs font-medium text-primary block mb-1">Bio</label>
                 <textarea rows={4} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Nivel</label>
+                <select
+                  value={form.level || ''}
+                  onChange={(e) => setForm({ ...form, level: (e.target.value || null) as 'junior' | 'senior' | null })}
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="">Sin nivel asignado (aplica tarifa junior)</option>
+                  <option value="junior">Junior</option>
+                  <option value="senior">Senior</option>
+                </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-primary block mb-2">Especialidades</label>

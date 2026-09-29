@@ -8,6 +8,8 @@ export interface ClassTypeConfig {
   color: string // hex e.g. '#F4EF71'
   price_mxn: number
   instructor_rate_mxn: number
+  instructor_rate_junior_mxn: number
+  instructor_rate_senior_mxn: number
   is_active: boolean
   sort_order: number
 }
@@ -22,6 +24,7 @@ export interface Instructor {
   bio: string
   photo_url: string | null
   specialties: ClassType[]
+  level: 'junior' | 'senior' | null
   created_at: string
 }
 

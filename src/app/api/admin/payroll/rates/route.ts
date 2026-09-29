@@ -33,9 +33,10 @@ export async function PATCH(request: NextRequest) {
   const admin = createAdminClient()
 
   if (body.type === 'global') {
+    const field = body.level === 'senior' ? 'instructor_rate_senior_mxn' : 'instructor_rate_junior_mxn'
     const { error } = await admin
       .from('class_types')
-      .update({ instructor_rate_mxn: body.rate })
+      .update({ [field]: body.rate })
       .eq('id', body.class_type_id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
