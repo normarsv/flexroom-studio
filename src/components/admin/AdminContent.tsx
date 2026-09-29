@@ -278,10 +278,10 @@ export default function AdminContent({ policy, settings, locale }: Props) {
       <h1 className="text-2xl font-bold text-primary">Configuración</h1>
 
       {/* ── TABS ──────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 overflow-x-auto">
         {([
           { key: 'cancellation_settings', label: 'Cancelaciones' },
-          { key: 'station_map', label: 'Mapa de estaciones' },
+          { key: 'station_map', label: 'Mapa' },
           { key: 'emails', label: 'Correos' },
           { key: 'coming_soon', label: 'Próximamente' },
           { key: 'stripe', label: 'Stripe' },
@@ -289,7 +289,7 @@ export default function AdminContent({ policy, settings, locale }: Props) {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`shrink-0 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
               tab === key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
             }`}
           >

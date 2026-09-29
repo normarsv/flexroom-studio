@@ -39,24 +39,26 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
   const [countryCode, setCountryCode] = useState(parsed.code)
   const [phone, setPhone] = useState(parsed.local)
   const [savingDetails, setSavingDetails] = useState(false)
+  const [localBookings, setLocalBookings] = useState(bookings)
+  const [localCredits, setLocalCredits] = useState(credits)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
-  const [confirmBooking, setConfirmBooking] = useState<{ id: string; willLose: boolean } | null>(null)
+  const [confirmBooking, setConfirmBooking] = useState<{ id: string; willLose: boolean; classType: string; hasPackage: boolean } | null>(null)
 
-  const upcomingBookings = bookings.filter(
+  const upcomingBookings = localBookings.filter(
     (b) => b.session && isFuture(parseISO(`${b.session.date}T${b.session.start_time}`))
   )
-  const pastBookings = bookings.filter(
+  const pastBookings = localBookings.filter(
     (b) => !b.session || !isFuture(parseISO(`${b.session.date}T${b.session.start_time}`))
   )
 
   const activePackages = userPackages.filter((up) => isFuture(parseISO(up.expires_at)))
   const expiredPackages = userPackages.filter((up) => !isFuture(parseISO(up.expires_at)))
 
-  function handleCancelClick(bookingId: string, sessionDate: string, sessionTime: string) {
+  function handleCancelClick(bookingId: string, sessionDate: string, sessionTime: string, classType: string, hasPackage: boolean) {
     const sessionDateTime = new Date(`${sessionDate}T${sessionTime}`)
     const hoursUntilClass = (sessionDateTime.getTime() - Date.now()) / (1000 * 60 * 60)
     const willLose = hoursUntilClass < cancellationHoursLimit
-    setConfirmBooking({ id: bookingId, willLose })
+    setConfirmBooking({ id: bookingId, willLose, classType, hasPackage })
   }
 
   async function handleConfirmCancel() {
@@ -67,6 +69,10 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       const res = await fetch(`/api/bookings/${confirmBooking.id}/cancel`, { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
+        setLocalBookings((prev) => prev.filter((b) => b.id !== confirmBooking.id))
+        if (data.creditGranted && !confirmBooking.hasPackage) {
+          setLocalCredits((prev) => [...prev, { id: crypto.randomUUID(), class_type: confirmBooking.classType }])
+        }
         if (data.creditGranted) {
           toast.success(locale === 'es'
             ? '¡Reserva cancelada! Se añadió 1 crédito a tu cuenta.'
@@ -74,7 +80,6 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
         } else {
           toast.success(locale === 'es' ? 'Reserva cancelada.' : 'Booking cancelled.')
         }
-        window.location.reload()
       } else {
         toast.error(data.error || 'Error al cancelar')
       }
@@ -121,7 +126,7 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleCancelClick(booking.id, session.date, session.start_time)}
+            onClick={() => handleCancelClick(booking.id, session.date, session.start_time, session.class_type, !!booking.user_package_id)}
             disabled={cancellingId === booking.id}
             className="self-start sm:self-auto text-destructive border-destructive/30 hover:bg-destructive/10 text-xs"
           >
@@ -145,9 +150,9 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       </div>
 
       {/* Credits */}
-      {credits.length > 0 && (() => {
+      {localCredits.length > 0 && (() => {
         const byType: Record<string, number> = {}
-        for (const c of credits) {
+        for (const c of localCredits) {
           byType[c.class_type] = (byType[c.class_type] ?? 0) + 1
         }
         return (

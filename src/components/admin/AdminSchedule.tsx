@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons'
@@ -36,7 +36,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [requestList, setRequestList] = useState(requests)
   const [events, setEvents] = useState(initialEvents)
   const [classTypes, setClassTypes] = useState<ClassTypeConfig[]>(initialClassTypes)
-  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events' | 'types'>('upcoming')
+  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events' | 'types' | 'calendar'>('upcoming')
 
   // Helpers for dynamic class type display
   const getTypeLabel = (key: string) =>
@@ -86,6 +86,17 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     acc[s.date].push(s)
     return acc
   }, {})
+
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => {
+    const today = new Date()
+    const dow = today.getDay()
+    const monday = addDays(today, dow === 0 ? -6 : 1 - dow)
+    monday.setHours(0, 0, 0, 0)
+    return monday
+  })
+  const calendarDays = Array.from({ length: 7 }, (_, i) => addDays(calendarWeekStart, i))
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const getTypeColor = (key: string) => classTypes.find(c => c.key === key)?.color || '#868686'
 
   async function handleCancel(session: ClassSession) {
     if (!confirm('¿Cancelar esta clase?')) return
@@ -312,8 +323,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6 w-fit">
+      <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6 overflow-x-auto">
         {([
+            { key: 'calendar', label: '📅 Calendario' },
             { key: 'upcoming', label: 'Próximas clases' },
             { key: 'events', label: `✨ Eventos${events.length > 0 ? ` (${events.length})` : ''}` },
             { key: 'recurring', label: 'Plantillas semanales' },
@@ -323,7 +335,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`shrink-0 px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
               tab === key ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground hover:text-primary'
             }`}
           >
@@ -1149,6 +1161,117 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             >
               {savingType ? 'Guardando...' : 'Agregar tipo'}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── CALENDAR VIEW ─────────────────────────────────── */}
+      {tab === 'calendar' && (
+        <div>
+          {/* Week navigation */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <button
+              onClick={() => setCalendarWeekStart(d => { const p = addDays(d, -7); p.setHours(0,0,0,0); return p })}
+              className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-secondary transition-colors"
+            >
+              ← Anterior
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date()
+                const dow = today.getDay()
+                const monday = addDays(today, dow === 0 ? -6 : 1 - dow)
+                monday.setHours(0, 0, 0, 0)
+                setCalendarWeekStart(monday)
+              }}
+              className="px-3 py-1.5 rounded-lg border border-primary/40 text-sm text-primary font-medium hover:bg-primary/5 transition-colors"
+            >
+              Hoy
+            </button>
+            <button
+              onClick={() => setCalendarWeekStart(d => { const n = addDays(d, 7); n.setHours(0,0,0,0); return n })}
+              className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-secondary transition-colors"
+            >
+              Siguiente →
+            </button>
+            <span className="text-sm text-muted-foreground ml-1">
+              {format(calendarWeekStart, "d MMM", { locale: es })} – {format(calendarDays[6], "d MMM yyyy", { locale: es })}
+            </span>
+          </div>
+
+          {/* Grid */}
+          <div className="overflow-x-auto rounded-xl border border-border bg-white">
+            <div className="grid grid-cols-7 min-w-[700px]">
+              {/* Day headers */}
+              {calendarDays.map((day, i) => {
+                const dateStr = format(day, 'yyyy-MM-dd')
+                const isToday = dateStr === todayStr
+                return (
+                  <div
+                    key={i}
+                    className={`px-2 py-2.5 border-b border-border text-center ${i > 0 ? 'border-l' : ''} ${isToday ? 'bg-[#F4EF71]/25' : ''}`}
+                  >
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide capitalize">
+                      {format(day, 'EEE', { locale: es })}
+                    </p>
+                    <p className={`text-xl font-bold mt-0.5 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {format(day, 'd')}
+                    </p>
+                  </div>
+                )
+              })}
+
+              {/* Session cells */}
+              {calendarDays.map((day, i) => {
+                const dateStr = format(day, 'yyyy-MM-dd')
+                const isToday = dateStr === todayStr
+                const isPast = dateStr < todayStr
+                const daySessions = [...sessions, ...events]
+                  .filter(s => s.date === dateStr)
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+                return (
+                  <div
+                    key={i}
+                    className={`p-1.5 min-h-[140px] align-top ${i > 0 ? 'border-l border-border' : ''} ${isToday ? 'bg-[#F4EF71]/10' : isPast ? 'bg-secondary/30' : ''}`}
+                  >
+                    {daySessions.map((session) => {
+                      const color = getTypeColor(session.class_type)
+                      const isCancelled = session.status === 'cancelled'
+                      const spotsLeft = session.capacity - session.spots_booked
+                      const isFull = spotsLeft === 0 && !isCancelled
+
+                      return (
+                        <button
+                          key={session.id}
+                          onClick={() => !isCancelled && openAttendance(session)}
+                          title={`${getTypeLabel(session.class_type)} · ${session.start_time.slice(0, 5)} · ${(session.instructor as any)?.name || ''}`}
+                          className={`w-full text-left rounded-md p-1.5 mb-1 border text-xs transition-all ${
+                            isCancelled
+                              ? 'opacity-40 cursor-default line-through'
+                              : 'cursor-pointer hover:shadow-md hover:scale-[1.02]'
+                          }`}
+                          style={{
+                            background: hexToRgba(color, 0.15),
+                            borderColor: hexToRgba(color, 0.5),
+                            borderLeft: `3px solid ${hexToRgba(color, 0.9)}`,
+                          }}
+                        >
+                          <p className="font-bold text-primary leading-tight">{session.start_time.slice(0, 5)}</p>
+                          <p className="text-primary/70 truncate leading-tight mt-0.5">{getTypeLabel(session.class_type)}</p>
+                          {(session.instructor as any)?.name && (
+                            <p className="text-primary/50 truncate leading-tight">{(session.instructor as any).name.split(' ')[0]}</p>
+                          )}
+                          <p className={`font-semibold leading-tight mt-0.5 ${isFull ? 'text-red-500' : 'text-primary/60'}`}>
+                            {spotsLeft}/{session.capacity}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
