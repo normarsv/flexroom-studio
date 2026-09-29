@@ -373,7 +373,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           || (session as any).instructor?.name}
                       </span>
                       <span className="text-xs text-muted-foreground shrink-0">
-                        {session.capacity - session.spots_booked} / {session.capacity} lugares
+                        {session.spots_booked} / {session.capacity} lugares
                       </span>
                       {session.status === 'cancelled' && (
                         <Badge variant="destructive" className="text-xs">Cancelada</Badge>
@@ -1238,8 +1238,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                     {daySessions.map((session) => {
                       const color = getTypeColor(session.class_type)
                       const isCancelled = session.status === 'cancelled'
-                      const spotsLeft = session.capacity - session.spots_booked
-                      const isFull = spotsLeft === 0 && !isCancelled
+                      const isFull = session.spots_booked >= session.capacity && !isCancelled
 
                       return (
                         <button
@@ -1263,7 +1262,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             <p className="text-primary/50 truncate leading-tight">{(session.instructor as any).name.split(' ')[0]}</p>
                           )}
                           <p className={`font-semibold leading-tight mt-0.5 ${isFull ? 'text-red-500' : 'text-primary/60'}`}>
-                            {spotsLeft}/{session.capacity}
+                            {session.spots_booked}/{session.capacity}
                           </p>
                         </button>
                       )
