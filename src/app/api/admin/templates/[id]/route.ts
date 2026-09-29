@@ -17,6 +17,14 @@ export async function PATCH(
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await request.json()
+
+  // Fetch current template so we can detect capacity changes
+  const { data: current } = await supabase
+    .from('recurring_templates')
+    .select('capacity')
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('recurring_templates')
     .update(body)
@@ -25,6 +33,19 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // If capacity changed, sync future sessions generated from this template
+  if (body.capacity !== undefined && current && body.capacity !== current.capacity) {
+    const today = new Date().toISOString().slice(0, 10)
+    // Only update sessions where spots_booked <= new capacity (never overbook)
+    await supabase
+      .from('class_sessions')
+      .update({ capacity: body.capacity })
+      .eq('recurring_template_id', id)
+      .gte('date', today)
+      .lte('spots_booked', body.capacity)
+  }
+
   return NextResponse.json(data)
 }
 

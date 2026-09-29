@@ -39,12 +39,12 @@ export async function POST(request: NextRequest) {
       // Check if session already exists
       const { data: existing } = await supabase
         .from('class_sessions')
-        .select('id')
+        .select('id, capacity, spots_booked')
         .eq('date', dateStr)
         .eq('start_time', template.start_time)
         .eq('class_type', template.class_type)
         .eq('instructor_id', template.instructor_id)
-        .single()
+        .maybeSingle()
 
       if (!existing) {
         sessions.push({
@@ -59,6 +59,12 @@ export async function POST(request: NextRequest) {
           is_recurring: true,
           recurring_template_id: template.id,
         })
+      } else if (existing.capacity !== template.capacity && template.capacity >= existing.spots_booked) {
+        // Sync capacity from template if it changed and it's safe (won't overbook)
+        await supabase
+          .from('class_sessions')
+          .update({ capacity: template.capacity })
+          .eq('id', existing.id)
       }
     }
   }
