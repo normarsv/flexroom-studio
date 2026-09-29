@@ -181,6 +181,7 @@ export interface StudioSettings {
   coming_soon_password: string | null
   coming_soon_launch_date: string | null
   station_map_url: string | null
+  stripe_live_mode: boolean
 }
 
 export interface Coupon {

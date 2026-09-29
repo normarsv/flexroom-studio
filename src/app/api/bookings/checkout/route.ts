@@ -1,11 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import { getStripe } from '@/lib/stripe'
 import { CLASS_TYPE_LABELS, SINGLE_SESSION_PRICES_MXN } from '@/lib/constants'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-05-27.dahlia' as const,
-})
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -80,6 +76,7 @@ export async function POST(request: NextRequest) {
     metadata.station = String(station)
   }
 
+  const stripe = await getStripe()
   const checkoutSession = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
