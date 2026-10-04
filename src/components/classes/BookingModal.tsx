@@ -7,7 +7,7 @@ import { es, enUS } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark, faCircleExclamation, faTag, faChevronDown } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
-import { ClassSession, UserPackage } from '@/types'
+import { ClassSession, ClassTypeConfig, UserPackage } from '@/types'
 import WaiverModal from '@/components/WaiverModal'
 import { CLASS_TYPE_LABELS, SINGLE_SESSION_PRICES_MXN } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
@@ -26,11 +26,12 @@ interface Props {
   takenStations: number[]
   stationMapUrl: string | null
   hasAcceptedWaiver: boolean
+  classTypes: ClassTypeConfig[]
   onClose: () => void
   onBook?: (sessionId: string) => void
 }
 
-export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, hasAcceptedWaiver, onClose, onBook }: Props) {
+export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, hasAcceptedWaiver, classTypes, onClose, onBook }: Props) {
   const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
   const creditCount = matchingCredits.length
   const t = useTranslations('classes')
@@ -63,6 +64,10 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const [station, setStation] = useState<number | null>(null)
 
   const classLabel = CLASS_TYPE_LABELS[session.class_type]
+  const dbClassType = classTypes.find((ct) => ct.key === session.class_type)
+  const classLabelText = (session as any).custom_title
+    || (locale === 'es' ? (dbClassType?.name_es || classLabel?.es || session.class_type) : (dbClassType?.name_en || classLabel?.en || session.class_type))
+  const hasSinglePrice = !!SINGLE_SESSION_PRICES_MXN[session.class_type]
   const date = parseISO(session.date)
 
   // Filter packages compatible with this class type
@@ -204,7 +209,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
             {format(date, "EEEE d 'de' MMMM", { locale: dateLocale })}
           </p>
           <h2 className="text-xl font-bold text-primary">
-            {(session as any).custom_title || (locale === 'es' ? classLabel.es : classLabel.en)}
+            {classLabelText}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
             {session.start_time.slice(0, 5)} · {session.duration_minutes} min
@@ -325,78 +330,82 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                     ? 'No tienes una membresía activa para esta clase.'
                     : "You don't have an active membership for this class."}
                 </p>
-                <Button
-                  onClick={() => withWaiver(handleBuySingle)}
-                  disabled={singleLoading || (needsStation && !station)}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  {singleLoading
-                    ? (locale === 'es' ? 'Redirigiendo...' : 'Redirecting...')
-                    : locale === 'es'
-                      ? `Pagar clase individual — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (antes $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
-                      : `Pay single class — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (was $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
-                  }
-                </Button>
+                {hasSinglePrice && (
+                  <>
+                    <Button
+                      onClick={() => withWaiver(handleBuySingle)}
+                      disabled={singleLoading || (needsStation && !station)}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {singleLoading
+                        ? (locale === 'es' ? 'Redirigiendo...' : 'Redirecting...')
+                        : locale === 'es'
+                          ? `Pagar clase individual — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (antes $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
+                          : `Pay single class — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (was $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
+                      }
+                    </Button>
 
-                {/* Coupon input */}
-                <div>
-                  <button
-                    onClick={() => setShowCoupon((v) => !v)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
-                  >
-                    <FontAwesomeIcon icon={faTag} className="w-3 h-3" />
-                    {locale === 'es' ? '¿Tienes un cupón?' : 'Have a coupon?'}
-                    <FontAwesomeIcon
-                      icon={faChevronDown}
-                      className={`w-3 h-3 transition-transform ${showCoupon ? 'rotate-180' : ''}`}
-                    />
-                  </button>
+                    {/* Coupon input */}
+                    <div>
+                      <button
+                        onClick={() => setShowCoupon((v) => !v)}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
+                      >
+                        <FontAwesomeIcon icon={faTag} className="w-3 h-3" />
+                        {locale === 'es' ? '¿Tienes un cupón?' : 'Have a coupon?'}
+                        <FontAwesomeIcon
+                          icon={faChevronDown}
+                          className={`w-3 h-3 transition-transform ${showCoupon ? 'rotate-180' : ''}`}
+                        />
+                      </button>
 
-                  {showCoupon && (
-                    <div className="mt-2 space-y-2">
-                      {appliedCoupon ? (
-                        <div className="flex items-center justify-between bg-[#F4EF71]/20 border border-[#F4EF71] rounded-lg px-3 py-2">
-                          <div>
-                            <p className="text-xs font-bold text-foreground">{appliedCoupon.code}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {appliedCoupon.discount_type === 'percentage'
-                                ? `${appliedCoupon.discount_value}% de descuento`
-                                : `$${appliedCoupon.discount_value} MXN de descuento`}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => { setAppliedCoupon(null); setCouponInput('') }}
-                            className="text-xs text-muted-foreground hover:text-destructive"
-                          >
-                            Quitar
-                          </button>
+                      {showCoupon && (
+                        <div className="mt-2 space-y-2">
+                          {appliedCoupon ? (
+                            <div className="flex items-center justify-between bg-[#F4EF71]/20 border border-[#F4EF71] rounded-lg px-3 py-2">
+                              <div>
+                                <p className="text-xs font-bold text-foreground">{appliedCoupon.code}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {appliedCoupon.discount_type === 'percentage'
+                                    ? `${appliedCoupon.discount_value}% de descuento`
+                                    : `$${appliedCoupon.discount_value} MXN de descuento`}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => { setAppliedCoupon(null); setCouponInput('') }}
+                                className="text-xs text-muted-foreground hover:text-destructive"
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={couponInput}
+                                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                placeholder="CÓDIGO"
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                              />
+                              <Button
+                                onClick={handleApplyCoupon}
+                                disabled={couponLoading || !couponInput.trim()}
+                                variant="outline"
+                                className="text-sm shrink-0"
+                              >
+                                {couponLoading ? '...' : 'Aplicar'}
+                              </Button>
+                            </div>
+                          )}
+                          {couponError && (
+                            <p className="text-xs text-destructive">{couponError}</p>
+                          )}
                         </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder="CÓDIGO"
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-border text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                          />
-                          <Button
-                            onClick={handleApplyCoupon}
-                            disabled={couponLoading || !couponInput.trim()}
-                            variant="outline"
-                            className="text-sm shrink-0"
-                          >
-                            {couponLoading ? '...' : 'Aplicar'}
-                          </Button>
-                        </div>
-                      )}
-                      {couponError && (
-                        <p className="text-xs text-destructive">{couponError}</p>
                       )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
 
                 <p className="text-xs text-muted-foreground text-center">
                   {locale === 'es' ? '¿Quieres clases ilimitadas? ' : 'Want unlimited classes? '}

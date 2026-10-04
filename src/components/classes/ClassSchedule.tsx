@@ -582,6 +582,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           takenStations={takenStations[selectedSession.id] ?? []}
           stationMapUrl={stationMapUrl}
           hasAcceptedWaiver={hasAcceptedWaiver}
+          classTypes={classTypes}
           onClose={() => setSelectedSession(null)}
           onBook={(id) => setLocalBookedIds((prev) => [...prev, id])}
         />
