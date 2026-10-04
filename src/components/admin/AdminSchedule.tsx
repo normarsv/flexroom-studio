@@ -295,11 +295,17 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setSavingBooking(false)
   }
 
-  async function handleCancelBooking(bookingId: string, paymentStatus: string) {
+  async function handleCancelBooking(bookingId: string, paymentStatus: string, userId: string | null) {
     const isPaid = paymentStatus === 'paid'
-    const msg = isPaid
-      ? '¿Cancelar esta reserva? El cliente recibirá un crédito de cancelación.'
-      : '¿Cancelar esta reserva? El cliente no recibirá crédito (pago pendiente).'
+    const isGuest = !userId
+    let msg: string
+    if (isGuest) {
+      msg = '¿Cancelar esta reserva?\n\nEste cliente fue agregado como invitado — no tiene cuenta registrada, por lo que no se puede otorgar crédito automáticamente. Contacta directamente al cliente si aplica un reembolso o acuerdo.'
+    } else if (isPaid) {
+      msg = '¿Cancelar esta reserva? El cliente recibirá un crédito de cancelación.'
+    } else {
+      msg = '¿Cancelar esta reserva? El cliente no recibirá crédito (pago pendiente).'
+    }
     if (!confirm(msg)) return
     setCancellingBooking(bookingId)
     const res = await fetch(`/api/admin/bookings/${bookingId}/cancel`, { method: 'POST' })
@@ -876,7 +882,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                         {isAdmin && (
                           <button
                             disabled={cancellingBooking === booking.id}
-                            onClick={() => handleCancelBooking(booking.id, booking.payment_status)}
+                            onClick={() => handleCancelBooking(booking.id, booking.payment_status, booking.user_id)}
                             title="Cancelar reserva"
                             className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
                           >
