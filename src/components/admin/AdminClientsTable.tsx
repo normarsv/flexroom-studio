@@ -421,7 +421,7 @@ export default function AdminClientsTable({
       const lastB = c.bookings.length > 0
         ? c.bookings.reduce((a, b) => a.created_at > b.created_at ? a : b)
         : null
-      const isActive = isClientActive(c)
+      const isActive = getClientStatus(c)
       return [
         c.full_name || '',
         c.email,
