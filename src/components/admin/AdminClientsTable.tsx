@@ -64,12 +64,10 @@ interface PackageOption {
 
 type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial' | 'reservas'
 
-const FOUR_WEEKS_AGO = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
-
 type ClientStatus = 'activo' | 'nuevo' | 'inactivo' | 'prospecto'
 
 function getClientStatus(client: ClientRow): ClientStatus {
-  const recentLogin = client.last_login_at != null && new Date(client.last_login_at) > FOUR_WEEKS_AGO
+  const recentLogin = client.last_login_at != null
   const hasPkgs = (client.user_packages?.length ?? 0) > 0
   const hasBookings = (client.bookings?.length ?? 0) > 0
   const hasPurchaseHistory = (client.lifetime_value ?? 0) > 0
