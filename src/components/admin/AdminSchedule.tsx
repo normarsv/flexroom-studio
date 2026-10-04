@@ -73,6 +73,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [guestEmail, setGuestEmail] = useState('')
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid')
   const [savingBooking, setSavingBooking] = useState(false)
+  const [cancellingBooking, setCancellingBooking] = useState<string | null>(null)
 
   // Station management (Reformer classes)
   const REFORMER_TYPES = ['pilates_reformer', 'reformer_restaurativo']
@@ -292,6 +293,27 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       toast.error(data.error || 'Error al agregar')
     }
     setSavingBooking(false)
+  }
+
+  async function handleCancelBooking(bookingId: string, paymentStatus: string) {
+    const isPaid = paymentStatus === 'paid'
+    const msg = isPaid
+      ? '¿Cancelar esta reserva? El cliente recibirá un crédito de cancelación.'
+      : '¿Cancelar esta reserva? El cliente no recibirá crédito (pago pendiente).'
+    if (!confirm(msg)) return
+    setCancellingBooking(bookingId)
+    const res = await fetch(`/api/admin/bookings/${bookingId}/cancel`, { method: 'POST' })
+    const data = await res.json()
+    if (res.ok) {
+      setAttendanceBookings((prev) => prev.filter((b) => b.id !== bookingId))
+      setSessions((prev) => prev.map((s) =>
+        s.id === attendanceSession?.id ? { ...s, spots_booked: Math.max(0, s.spots_booked - 1) } : s
+      ))
+      toast.success(data.creditGranted ? 'Reserva cancelada — crédito otorgado' : 'Reserva cancelada')
+    } else {
+      toast.error(data.error || 'Error al cancelar')
+    }
+    setCancellingBooking(null)
   }
 
   async function generateFromTemplates() {
@@ -851,6 +873,16 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                         >
                           <FontAwesomeIcon icon={faCircleXmark} className="w-4 h-4" />
                         </button>
+                        {isAdmin && (
+                          <button
+                            disabled={cancellingBooking === booking.id}
+                            onClick={() => handleCancelBooking(booking.id, booking.payment_status)}
+                            title="Cancelar reserva"
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
+                          >
+                            <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
