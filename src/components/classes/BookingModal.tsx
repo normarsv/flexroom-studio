@@ -453,10 +453,10 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           <Button variant="outline" onClick={onClose} className="flex-1">
             {locale === 'es' ? 'Cancelar' : 'Cancel'}
           </Button>
-          {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0) && (
+          {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0 || !hasSinglePrice) && (
             <Button
               onClick={() => withWaiver(handleBook)}
-              disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}
+              disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage && hasSinglePrice) : !guestName || !guestEmail)}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading ? (locale === 'es' ? 'Reservando...' : 'Booking...') : t('book')}
