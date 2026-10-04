@@ -47,6 +47,7 @@ interface ClientRow {
   email: string
   phone: string | null
   lifetime_value: number | null
+  migrated_inactive: boolean
   credits: CreditEntry[]
   created_at: string
   last_login_at: string | null
@@ -73,6 +74,7 @@ function getClientStatus(client: ClientRow): ClientStatus {
   const hasBookings = (client.bookings?.length ?? 0) > 0
   const hasPurchaseHistory = (client.lifetime_value ?? 0) > 0
   if (recentLogin) return 'activo'
+  if (client.migrated_inactive && !client.last_login_at) return 'inactivo'
   if (!client.last_login_at && (hasPkgs || hasBookings || hasPurchaseHistory)) return 'nuevo'
   if (!client.last_login_at && !hasPkgs && !hasBookings && !hasPurchaseHistory) return 'prospecto'
   return 'inactivo'
