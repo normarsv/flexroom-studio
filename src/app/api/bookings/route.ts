@@ -108,8 +108,9 @@ export async function POST(request: NextRequest) {
 
     // Credit booking
     if (useCredit) {
-      // Find an unused credit for this class type
-      const { data: credit } = await supabase
+      // Find an unused credit: prefer type-specific, fall back to mixto
+      let credit = null
+      const { data: specificCredit } = await supabase
         .from('credits')
         .select('id')
         .eq('user_id', user.id)
@@ -117,7 +118,21 @@ export async function POST(request: NextRequest) {
         .eq('used', false)
         .order('created_at', { ascending: true })
         .limit(1)
-        .single()
+        .maybeSingle()
+      credit = specificCredit
+
+      if (!credit) {
+        const { data: mixtoCredit } = await supabase
+          .from('credits')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('class_type', 'mixto')
+          .eq('used', false)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        credit = mixtoCredit
+      }
 
       if (!credit) {
         return NextResponse.json({ error: 'No tienes créditos disponibles para este tipo de clase' }, { status: 400 })

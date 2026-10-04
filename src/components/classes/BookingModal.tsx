@@ -32,7 +32,7 @@ interface Props {
 }
 
 export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, hasAcceptedWaiver, classTypes, onClose, onBook }: Props) {
-  const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
+  const matchingCredits = credits.filter((c) => c.class_type === session.class_type || c.class_type === 'mixto')
   const creditCount = matchingCredits.length
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS

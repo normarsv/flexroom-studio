@@ -890,6 +890,7 @@ export default function AdminClientsTable({
                           className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
                           <option value="">Tipo de clase...</option>
+                          <option value="mixto">Mixto (cualquier clase)</option>
                           {Object.entries(CLASS_TYPE_LABELS).map(([key, label]) => (
                             <option key={key} value={key}>{label.es}</option>
                           ))}
