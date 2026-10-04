@@ -67,7 +67,8 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const dbClassType = classTypes.find((ct) => ct.key === session.class_type)
   const classLabelText = (session as any).custom_title
     || (locale === 'es' ? (dbClassType?.name_es || classLabel?.es || session.class_type) : (dbClassType?.name_en || classLabel?.en || session.class_type))
-  const hasSinglePrice = !!SINGLE_SESSION_PRICES_MXN[session.class_type]
+  const singlePrice = dbClassType?.price_mxn ?? SINGLE_SESSION_PRICES_MXN[session.class_type] ?? 0
+  const hasSinglePrice = singlePrice > 0
   const date = parseISO(session.date)
 
   // Filter packages compatible with this class type
@@ -124,12 +125,11 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   }
 
   function computeSinglePrice(): number {
-    const base = SINGLE_SESSION_PRICES_MXN[session.class_type]
-    if (!appliedCoupon) return base
+    if (!appliedCoupon) return singlePrice
     if (appliedCoupon.discount_type === 'percentage') {
-      return Math.round(base * (1 - appliedCoupon.discount_value / 100))
+      return Math.round(singlePrice * (1 - appliedCoupon.discount_value / 100))
     }
-    return Math.max(0, base - appliedCoupon.discount_value)
+    return Math.max(0, singlePrice - appliedCoupon.discount_value)
   }
 
   async function handleBuySingle() {
@@ -345,8 +345,8 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                       {singleLoading
                         ? (locale === 'es' ? 'Redirigiendo...' : 'Redirecting...')
                         : locale === 'es'
-                          ? `Pagar clase individual — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (antes $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
-                          : `Pay single class — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== SINGLE_SESSION_PRICES_MXN[session.class_type] ? ` (was $${SINGLE_SESSION_PRICES_MXN[session.class_type]})` : ''}`
+                          ? `Pagar clase individual — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== singlePrice ? ` (antes $${singlePrice})` : ''}`
+                          : `Pay single class — $${computeSinglePrice()} MXN${appliedCoupon && computeSinglePrice() !== singlePrice ? ` (was $${singlePrice})` : ''}`
                       }
                     </Button>
 
