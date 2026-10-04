@@ -68,13 +68,9 @@ const FOUR_WEEKS_AGO = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
 type ClientStatus = 'activo' | 'nuevo' | 'inactivo'
 
 function getClientStatus(client: ClientRow): ClientStatus {
-  const hasActivity =
-    client.bookings.some((b) => new Date(b.created_at) > FOUR_WEEKS_AGO) ||
-    (client.last_login_at != null && new Date(client.last_login_at) > FOUR_WEEKS_AGO)
   const hasActivePkg = client.user_packages?.some((up) => new Date(up.expires_at) > new Date())
-  // Never logged in but has a package = migrated, pending password setup
-  if (!client.last_login_at && hasActivePkg) return 'nuevo'
-  if (hasActivity || hasActivePkg) return 'activo'
+  if (client.last_login_at != null) return 'activo'
+  if (hasActivePkg) return 'nuevo'
   return 'inactivo'
 }
 
