@@ -12,7 +12,7 @@ export default function LoginForm({ locale }: { locale: string }) {
   const t = useTranslations('auth')
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot' | 'activate'>('login')
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -35,14 +35,7 @@ export default function LoginForm({ locale }: { locale: string }) {
     const supabase = createClient()
 
     try {
-      if (mode === 'activate') {
-        await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth/callback?next=/${locale}/reset-password`,
-        })
-        // Always show success — don't reveal whether email exists
-        toast.success('Si tu correo está registrado, recibirás un enlace para crear tu contraseña.')
-        setMode('login')
-      } else if (mode === 'forgot') {
+      if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth/callback?next=/${locale}/reset-password`,
         })
@@ -84,41 +77,6 @@ export default function LoginForm({ locale }: { locale: string }) {
     }
   }
 
-  if (mode === 'activate') {
-    return (
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-primary">{BRAND.name}</h1>
-          <p className="text-muted-foreground text-sm mt-1">Activa tu cuenta</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
-          <div className="bg-secondary/50 rounded-xl p-4 text-sm text-muted-foreground">
-            <p className="font-medium text-primary mb-1">¿Ya eras cliente de Flex Room?</p>
-            <p>Ingresa tu correo y te enviaremos un enlace para crear tu contraseña y acceder a tu cuenta.</p>
-          </div>
-          <form onSubmit={handleEmailAuth} className="space-y-3">
-            <input
-              type="email"
-              placeholder="Tu correo electrónico"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-              {loading ? 'Enviando...' : 'Enviar enlace de activación'}
-            </Button>
-          </form>
-          <p className="text-center text-xs text-muted-foreground">
-            <button type="button" onClick={() => setMode('login')} className="text-primary font-medium hover:underline">
-              Volver al inicio de sesión
-            </button>
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full max-w-sm">
       <div className="text-center mb-6">
@@ -126,19 +84,6 @@ export default function LoginForm({ locale }: { locale: string }) {
         <p className="text-muted-foreground text-sm mt-1">{t('login_title')}</p>
       </div>
 
-      {mode === 'login' && (
-        <button
-          type="button"
-          onClick={() => setMode('activate')}
-          className="w-full mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-[#F4EF71]/20 border border-[#F4EF71] hover:bg-[#F4EF71]/40 transition-colors text-left"
-        >
-          <span className="text-lg">✨</span>
-          <div>
-            <p className="text-xs font-semibold text-primary">¿Ya eras cliente de Flex Room?</p>
-            <p className="text-xs text-muted-foreground">Activa tu cuenta aquí →</p>
-          </div>
-        </button>
-      )}
 
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 space-y-4">
         {/* Google */}
