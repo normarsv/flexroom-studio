@@ -65,13 +65,16 @@ type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial' | 'reservas'
 
 const FOUR_WEEKS_AGO = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
 
-type ClientStatus = 'activo' | 'nuevo' | 'inactivo'
+type ClientStatus = 'activo' | 'nuevo' | 'inactivo' | 'prospecto'
 
 function getClientStatus(client: ClientRow): ClientStatus {
-  const hasActivePkg = client.user_packages?.some((up) => new Date(up.expires_at) > new Date())
   const recentLogin = client.last_login_at != null && new Date(client.last_login_at) > FOUR_WEEKS_AGO
+  const hasPkgs = (client.user_packages?.length ?? 0) > 0
+  const hasBookings = (client.bookings?.length ?? 0) > 0
+  const hasPurchaseHistory = (client.lifetime_value ?? 0) > 0
   if (recentLogin) return 'activo'
-  if (hasActivePkg && !client.last_login_at) return 'nuevo'
+  if (!client.last_login_at && (hasPkgs || hasBookings || hasPurchaseHistory)) return 'nuevo'
+  if (!client.last_login_at && !hasPkgs && !hasBookings && !hasPurchaseHistory) return 'prospecto'
   return 'inactivo'
 }
 
@@ -159,9 +162,8 @@ export default function AdminClientsTable({
     if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo')
     else if (statusFilter === 'nuevos') result = result.filter((c) => getClientStatus(c) === 'nuevo')
     else if (statusFilter === 'inactivos') result = result.filter((c) => getClientStatus(c) === 'inactivo')
-    else if (statusFilter === 'prospectos') result = result.filter((c) =>
-      !c.last_login_at && (!c.user_packages || c.user_packages.length === 0) && (!c.bookings || c.bookings.length === 0)
-    )
+    else if (statusFilter === 'prospectos') result = result.filter((c) => getClientStatus(c) === 'prospecto')
+
     const q = search.toLowerCase().trim()
     if (!q) return result
     return result.filter(
@@ -433,7 +435,7 @@ export default function AdminClientsTable({
         c.credits?.length ?? 0,
         c.bookings.length,
         lastB ? new Date(lastB.created_at).toLocaleDateString('es-MX') : '',
-        getClientStatus(c) === 'activo' ? 'Activo' : getClientStatus(c) === 'nuevo' ? 'Nuevo' : 'Inactivo',
+        getClientStatus(c) === 'activo' ? 'Activo' : getClientStatus(c) === 'nuevo' ? 'Nuevo' : getClientStatus(c) === 'prospecto' ? 'Prospecto' : 'Inactivo',
         new Date(c.created_at).toLocaleDateString('es-MX'),
       ]
     })
@@ -526,11 +528,12 @@ export default function AdminClientsTable({
                     <td className="px-4 py-3 text-muted-foreground">{client.phone || <span className="text-xs italic">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        status === 'activo' ? 'bg-green-100 text-green-700' :
-                        status === 'nuevo'  ? 'bg-blue-100 text-blue-700' :
+                        status === 'activo'    ? 'bg-green-100 text-green-700' :
+                        status === 'nuevo'     ? 'bg-blue-100 text-blue-700' :
+                        status === 'prospecto' ? 'bg-purple-100 text-purple-700' :
                         'bg-secondary text-muted-foreground'
                       }`}>
-                        {status === 'activo' ? 'Activo' : status === 'nuevo' ? 'Nuevo' : 'Inactivo'}
+                        {status === 'activo' ? 'Activo' : status === 'nuevo' ? 'Nuevo' : status === 'prospecto' ? 'Prospecto' : 'Inactivo'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
