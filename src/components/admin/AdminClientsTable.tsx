@@ -69,8 +69,9 @@ type ClientStatus = 'activo' | 'nuevo' | 'inactivo'
 
 function getClientStatus(client: ClientRow): ClientStatus {
   const hasActivePkg = client.user_packages?.some((up) => new Date(up.expires_at) > new Date())
-  if (client.last_login_at != null) return 'activo'
-  if (hasActivePkg) return 'nuevo'
+  const recentLogin = client.last_login_at != null && new Date(client.last_login_at) > FOUR_WEEKS_AGO
+  if (recentLogin) return 'activo'
+  if (hasActivePkg && !client.last_login_at) return 'nuevo'
   return 'inactivo'
 }
 
@@ -129,10 +130,14 @@ export default function AdminClientsTable({
   const [whatsappClient, setWhatsappClient] = useState<ClientRow | null>(null)
   const [whatsappMessage, setWhatsappMessage] = useState('')
 
-  const WA_TEMPLATES = [
-    'Hola, te informamos que tu clase ha sido cancelada. Disculpa los inconvenientes.',
-    'Hola, hubo un cambio de horario en tu clase. Por favor contáctanos para más detalles.',
-    'Hola, te recordamos que tienes una clase próximamente. ¡Te esperamos!',
+  const WA_TEMPLATES: { text: string; tag?: string }[] = [
+    {
+      text: '¡Hola! 👋 Te recordamos que ya tenemos nuestra nueva plataforma activa. Tus créditos y paquetes ya están cargados y listos para usar. Entra a flexroomstudio.com, haz clic en "Olvidé mi contraseña" con tu correo y listo. ¡Te esperamos! 🧘‍♀️',
+      tag: 'Para clientes nuevos — pendiente de registro',
+    },
+    { text: 'Hola, te informamos que tu clase ha sido cancelada. Disculpa los inconvenientes.' },
+    { text: 'Hola, hubo un cambio de horario en tu clase. Por favor contáctanos para más detalles.' },
+    { text: 'Hola, te recordamos que tienes una clase próximamente. ¡Te esperamos!' },
   ]
 
   function openWhatsapp(client: ClientRow) {
@@ -1095,10 +1100,15 @@ export default function AdminClientsTable({
                 {WA_TEMPLATES.map((tpl, i) => (
                   <button
                     key={i}
-                    onClick={() => setWhatsappMessage(tpl)}
+                    onClick={() => setWhatsappMessage(tpl.text)}
                     className="w-full text-left text-xs px-3 py-2 rounded-lg border border-border hover:border-primary/40 hover:bg-secondary/50 transition-colors text-muted-foreground"
                   >
-                    {tpl}
+                    {tpl.tag && (
+                      <span className="inline-block mb-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 border border-amber-200">
+                        {tpl.tag}
+                      </span>
+                    )}
+                    <span className="block">{tpl.text}</span>
                   </button>
                 ))}
               </div>
