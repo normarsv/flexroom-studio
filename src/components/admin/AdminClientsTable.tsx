@@ -137,7 +137,7 @@ export default function AdminClientsTable({
 
   const WA_TEMPLATES: { text: string; tag?: string }[] = [
     {
-      text: '¡Hola! 👋 Ya tenemos nuestra nueva plataforma activa y tus créditos están listos. Entra a flexroomstudio.com con tu correo y la contraseña temporal que te enviamos — al ingresar te pedirá crear una contraseña nueva. ¡Te esperamos! 🧘‍♀️',
+      text: '¡Hola! 👋 Ya tenemos nuestra nueva plataforma activa. Entra a flexroomstudio.com con tu correo y la siguiente contraseña temporal (Flex2026!) — al ingresar te pedirá crear una contraseña nueva. ¡Te esperamos!',
       tag: 'Para clientes nuevos — pendiente de registro',
     },
     { text: 'Hola, te informamos que tu clase ha sido cancelada. Disculpa los inconvenientes.' },
