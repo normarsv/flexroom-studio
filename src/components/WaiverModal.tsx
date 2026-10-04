@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
@@ -11,6 +11,14 @@ interface Props {
 export default function WaiverModal({ onAccept }: Props) {
   const [checked, setChecked] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [waiverText, setWaiverText] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/waiver/text')
+      .then((r) => r.json())
+      .then((d) => setWaiverText(d.text))
+      .catch(() => setWaiverText(null))
+  }, [])
 
   async function handleAccept() {
     if (!checked) return
@@ -34,27 +42,14 @@ export default function WaiverModal({ onAccept }: Props) {
           <p className="text-xs text-muted-foreground">Léela con atención antes de continuar.</p>
         </div>
 
-        <div className="bg-secondary/50 rounded-xl p-4 text-sm text-foreground leading-relaxed max-h-64 overflow-y-auto space-y-3">
-          <p>
-            Al utilizar los servicios de <strong>Flex Room Studio</strong>, el/la participante
-            acepta voluntariamente los riesgos inherentes a las actividades físicas impartidas en
-            el estudio, incluyendo pero no limitándose a ejercicio funcional, pilates en reformer
-            y barre.
-          </p>
-          <p>
-            El/la participante declara encontrarse en condiciones físicas adecuadas para realizar
-            actividad física, y en caso de tener alguna condición médica, lesión previa o
-            limitación, se compromete a informarlo al instructor antes de la clase.
-          </p>
-          <p>
-            Flex Room Studio y su personal no serán responsables por lesiones, accidentes o daños
-            que pudieran ocurrir durante la práctica de las actividades, salvo que sean causados por
-            negligencia directa del estudio.
-          </p>
-          <p>
-            Esta carta responsiva tiene vigencia indefinida y aplica a todas las clases y
-            actividades realizadas en Flex Room Studio.
-          </p>
+        <div className="bg-secondary/50 rounded-xl p-4 text-sm text-foreground leading-relaxed max-h-64 overflow-y-auto">
+          {waiverText === null ? (
+            <p className="text-muted-foreground">Cargando...</p>
+          ) : (
+            waiverText.split('\n\n').map((para, i) => (
+              <p key={i} className={i > 0 ? 'mt-3' : ''}>{para}</p>
+            ))
+          )}
         </div>
 
         <label className="flex items-start gap-3 cursor-pointer select-none">

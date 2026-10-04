@@ -13,7 +13,7 @@ interface Props {
   locale: string
 }
 
-type Tab = 'cancellation_settings' | 'emails' | 'station_map' | 'stripe'
+type Tab = 'cancellation_settings' | 'emails' | 'station_map' | 'stripe' | 'waiver'
 
 interface EmailTemplate {
   id: string
@@ -136,6 +136,25 @@ export default function AdminContent({ policy, settings, locale }: Props) {
   const [cancellationHours, setCancellationHours] = useState(settings?.cancellation_hours_limit ?? 12)
   const [settingsLoading, setSettingsLoading] = useState(false)
 
+  // Waiver text
+  const [waiverText, setWaiverText] = useState(settings?.waiver_text ?? '')
+  const [waiverLoading, setWaiverLoading] = useState(false)
+
+  async function handleSaveWaiver() {
+    setWaiverLoading(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ waiver_text: waiverText }),
+      })
+      if (res.ok) toast.success('Carta responsiva actualizada')
+      else toast.error('Error al guardar')
+    } finally {
+      setWaiverLoading(false)
+    }
+  }
+
   async function handleSaveSettings() {
     setSettingsLoading(true)
     try {
@@ -207,8 +226,9 @@ export default function AdminContent({ policy, settings, locale }: Props) {
         {([
           { key: 'cancellation_settings', label: 'Cancelaciones' },
           { key: 'station_map', label: 'Mapa' },
+          { key: 'waiver', label: 'Carta responsiva' },
           { key: 'emails', label: 'Correos' },
-{ key: 'stripe', label: 'Stripe' },
+          { key: 'stripe', label: 'Stripe' },
         ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
             key={key}
@@ -397,6 +417,32 @@ export default function AdminContent({ policy, settings, locale }: Props) {
               )
             })
           )}
+        </div>
+      )}
+
+      {/* ── CARTA RESPONSIVA ──────────────────────────────── */}
+      {tab === 'waiver' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-primary mb-1">Carta responsiva</h2>
+            <p className="text-sm text-muted-foreground">
+              Este texto se muestra a los usuarios antes de su primera reserva o compra. Usa líneas en blanco para separar párrafos.
+            </p>
+          </div>
+          <textarea
+            value={waiverText}
+            onChange={(e) => setWaiverText(e.target.value)}
+            rows={12}
+            className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+            placeholder="Escribe el texto de la carta responsiva aquí..."
+          />
+          <Button
+            onClick={handleSaveWaiver}
+            disabled={waiverLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {waiverLoading ? 'Guardando...' : 'Guardar carta responsiva'}
+          </Button>
         </div>
       )}
 
