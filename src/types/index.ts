@@ -162,6 +162,18 @@ export interface HomepageContent {
   discipline1_image_url: string | null
   discipline2_image_url: string | null
   discipline3_image_url: string | null
+  discipline1_title_es: string | null
+  discipline1_title_en: string | null
+  discipline1_desc_es: string | null
+  discipline1_desc_en: string | null
+  discipline2_title_es: string | null
+  discipline2_title_en: string | null
+  discipline2_desc_es: string | null
+  discipline2_desc_en: string | null
+  discipline3_title_es: string | null
+  discipline3_title_en: string | null
+  discipline3_desc_es: string | null
+  discipline3_desc_en: string | null
   updated_at: string
 }
 

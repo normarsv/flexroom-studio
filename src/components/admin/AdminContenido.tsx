@@ -36,6 +36,18 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
   const [discipline1ImageUrl, setDiscipline1ImageUrl] = useState(homepage?.discipline1_image_url || '')
   const [discipline2ImageUrl, setDiscipline2ImageUrl] = useState(homepage?.discipline2_image_url || '')
   const [discipline3ImageUrl, setDiscipline3ImageUrl] = useState(homepage?.discipline3_image_url || '')
+  const [disc1TitleEs, setDisc1TitleEs] = useState(homepage?.discipline1_title_es || '')
+  const [disc1TitleEn, setDisc1TitleEn] = useState(homepage?.discipline1_title_en || '')
+  const [disc1DescEs, setDisc1DescEs] = useState(homepage?.discipline1_desc_es || '')
+  const [disc1DescEn, setDisc1DescEn] = useState(homepage?.discipline1_desc_en || '')
+  const [disc2TitleEs, setDisc2TitleEs] = useState(homepage?.discipline2_title_es || '')
+  const [disc2TitleEn, setDisc2TitleEn] = useState(homepage?.discipline2_title_en || '')
+  const [disc2DescEs, setDisc2DescEs] = useState(homepage?.discipline2_desc_es || '')
+  const [disc2DescEn, setDisc2DescEn] = useState(homepage?.discipline2_desc_en || '')
+  const [disc3TitleEs, setDisc3TitleEs] = useState(homepage?.discipline3_title_es || '')
+  const [disc3TitleEn, setDisc3TitleEn] = useState(homepage?.discipline3_title_en || '')
+  const [disc3DescEs, setDisc3DescEs] = useState(homepage?.discipline3_desc_es || '')
+  const [disc3DescEn, setDisc3DescEn] = useState(homepage?.discipline3_desc_en || '')
   const [homepageLoading, setHomepageLoading] = useState(false)
 
   const heroImgRef = useRef<HTMLInputElement>(null)
@@ -107,6 +119,18 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
           discipline1_image_url: discipline1ImageUrl || null,
           discipline2_image_url: discipline2ImageUrl || null,
           discipline3_image_url: discipline3ImageUrl || null,
+          discipline1_title_es: disc1TitleEs || null,
+          discipline1_title_en: disc1TitleEn || null,
+          discipline1_desc_es: disc1DescEs || null,
+          discipline1_desc_en: disc1DescEn || null,
+          discipline2_title_es: disc2TitleEs || null,
+          discipline2_title_en: disc2TitleEn || null,
+          discipline2_desc_es: disc2DescEs || null,
+          discipline2_desc_en: disc2DescEn || null,
+          discipline3_title_es: disc3TitleEs || null,
+          discipline3_title_en: disc3TitleEn || null,
+          discipline3_desc_es: disc3DescEs || null,
+          discipline3_desc_en: disc3DescEn || null,
         }),
       })
       if (res.ok) toast.success('Página de inicio actualizada')
@@ -264,21 +288,46 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
             </div>
           </div>
 
-          {/* Discipline images */}
-          <div className="space-y-4">
+          {/* Disciplines */}
+          <div className="space-y-6">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-              Imágenes de disciplinas
+              Disciplinas
             </h3>
-            <p className="text-xs text-muted-foreground">Imagen circular que aparece en cada tarjeta de la sección "Lo que hacemos". Recomendado: cuadrada, 200×200 px o más.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { label: 'Funcional', url: discipline1ImageUrl, setUrl: setDiscipline1ImageUrl, ref: disc1Ref, index: 1 as const },
-                { label: 'Reformer',  url: discipline2ImageUrl, setUrl: setDiscipline2ImageUrl, ref: disc2Ref, index: 2 as const },
-                { label: 'Barre',     url: discipline3ImageUrl, setUrl: setDiscipline3ImageUrl, ref: disc3Ref, index: 3 as const },
-              ].map((d) => (
-                <div key={d.label} className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-medium text-primary">{d.label}</p>
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden border border-border bg-secondary/50 shrink-0">
+            {[
+              {
+                label: 'Disciplina 1',
+                url: discipline1ImageUrl, setUrl: setDiscipline1ImageUrl, ref: disc1Ref, index: 1 as const,
+                titleEs: disc1TitleEs, setTitleEs: setDisc1TitleEs,
+                titleEn: disc1TitleEn, setTitleEn: setDisc1TitleEn,
+                descEs: disc1DescEs,   setDescEs:  setDisc1DescEs,
+                descEn: disc1DescEn,   setDescEn:  setDisc1DescEn,
+                placeholderTitle: 'Funcional', placeholderDesc: 'Descripción de la disciplina...',
+              },
+              {
+                label: 'Disciplina 2',
+                url: discipline2ImageUrl, setUrl: setDiscipline2ImageUrl, ref: disc2Ref, index: 2 as const,
+                titleEs: disc2TitleEs, setTitleEs: setDisc2TitleEs,
+                titleEn: disc2TitleEn, setTitleEn: setDisc2TitleEn,
+                descEs: disc2DescEs,   setDescEs:  setDisc2DescEs,
+                descEn: disc2DescEn,   setDescEn:  setDisc2DescEn,
+                placeholderTitle: 'Reformer', placeholderDesc: 'Descripción de la disciplina...',
+              },
+              {
+                label: 'Disciplina 3',
+                url: discipline3ImageUrl, setUrl: setDiscipline3ImageUrl, ref: disc3Ref, index: 3 as const,
+                titleEs: disc3TitleEs, setTitleEs: setDisc3TitleEs,
+                titleEn: disc3TitleEn, setTitleEn: setDisc3TitleEn,
+                descEs: disc3DescEs,   setDescEs:  setDisc3DescEs,
+                descEn: disc3DescEn,   setDescEn:  setDisc3DescEn,
+                placeholderTitle: 'Barre', placeholderDesc: 'Descripción de la disciplina...',
+              },
+            ].map((d) => (
+              <div key={d.label} className="border border-border rounded-xl p-4 space-y-4">
+                <p className="text-sm font-semibold text-primary">{d.label}</p>
+
+                {/* Image */}
+                <div className="flex items-center gap-4">
+                  <div className="relative w-14 h-14 rounded-full overflow-hidden border border-border bg-secondary/50 shrink-0">
                     {d.url ? (
                       <>
                         <Image src={d.url} alt={d.label} fill className="object-cover" />
@@ -295,13 +344,40 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
                       </div>
                     )}
                   </div>
-                  <input ref={d.ref} type="file" accept="image/*" className="hidden" onChange={(e) => handleDisciplineImageUpload(e, d.index)} />
-                  <Button variant="outline" size="sm" onClick={() => d.ref.current?.click()} className="rounded-lg text-xs h-7 px-3">
-                    {d.url ? 'Cambiar' : 'Subir'}
-                  </Button>
+                  <div>
+                    <input ref={d.ref} type="file" accept="image/*" className="hidden" onChange={(e) => handleDisciplineImageUpload(e, d.index)} />
+                    <Button variant="outline" size="sm" onClick={() => d.ref.current?.click()} className="rounded-lg text-xs h-7 px-3">
+                      {d.url ? 'Cambiar imagen' : 'Subir imagen'}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">Cuadrada, 200×200 px o más</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Titles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Título (ES)</label>
+                    <input type="text" value={d.titleEs} onChange={(e) => d.setTitleEs(e.target.value)} placeholder={d.placeholderTitle} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Título (EN)</label>
+                    <input type="text" value={d.titleEn} onChange={(e) => d.setTitleEn(e.target.value)} placeholder={d.placeholderTitle} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                </div>
+
+                {/* Descriptions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Descripción (ES)</label>
+                    <textarea value={d.descEs} onChange={(e) => d.setDescEs(e.target.value)} rows={3} placeholder={d.placeholderDesc} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Descripción (EN)</label>
+                    <textarea value={d.descEn} onChange={(e) => d.setDescEn(e.target.value)} rows={3} placeholder={d.placeholderDesc} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <Button onClick={handleSaveHomepage} disabled={homepageLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">

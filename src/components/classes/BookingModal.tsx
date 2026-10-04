@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark, faCircleExclamation, faTag, faChevronDown } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { ClassSession, UserPackage } from '@/types'
+import WaiverModal from '@/components/WaiverModal'
 import { CLASS_TYPE_LABELS, SINGLE_SESSION_PRICES_MXN } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -24,11 +25,12 @@ interface Props {
   credits: { id: string; class_type: string }[]
   takenStations: number[]
   stationMapUrl: string | null
+  hasAcceptedWaiver: boolean
   onClose: () => void
   onBook?: (sessionId: string) => void
 }
 
-export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, onClose, onBook }: Props) {
+export default function BookingModal({ session, locale, userId, userPackages, credits, takenStations, stationMapUrl, hasAcceptedWaiver, onClose, onBook }: Props) {
   const matchingCredits = credits.filter((c) => c.class_type === session.class_type)
   const creditCount = matchingCredits.length
   const t = useTranslations('classes')
@@ -39,6 +41,23 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const [selectedPackage, setSelectedPackage] = useState<string | null>(
     userPackages[0]?.id || null
   )
+
+  const [waiverAccepted, setWaiverAccepted] = useState(hasAcceptedWaiver)
+  const [showWaiver, setShowWaiver] = useState(false)
+  const pendingAction = useRef<(() => void) | null>(null)
+
+  function withWaiver(action: () => void) {
+    if (waiverAccepted) { action(); return }
+    pendingAction.current = action
+    setShowWaiver(true)
+  }
+
+  function onWaiverAccepted() {
+    setWaiverAccepted(true)
+    setShowWaiver(false)
+    pendingAction.current?.()
+    pendingAction.current = null
+  }
 
   const needsStation = REFORMER_TYPES.includes(session.class_type)
   const [station, setStation] = useState<number | null>(null)
@@ -165,6 +184,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm md:p-4">
       <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:max-w-md max-h-[92vh] overflow-y-auto p-6 relative">
         {/* Drag handle — mobile only */}
@@ -306,7 +326,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
                     : "You don't have an active membership for this class."}
                 </p>
                 <Button
-                  onClick={handleBuySingle}
+                  onClick={() => withWaiver(handleBuySingle)}
                   disabled={singleLoading || (needsStation && !station)}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
@@ -426,7 +446,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           </Button>
           {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0) && (
             <Button
-              onClick={handleBook}
+              onClick={() => withWaiver(handleBook)}
               disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
@@ -436,5 +456,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
         </div>
       </div>
     </div>
+    {showWaiver && <WaiverModal onAccept={onWaiverAccepted} />}
+    </>
   )
 }

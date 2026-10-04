@@ -38,8 +38,9 @@ export default async function ClassesPage({
   let waitlistedSessionIds: string[] = []
   let credits: { id: string; class_type: string }[] = []
 
+  let hasAcceptedWaiver = false
   if (user) {
-    const [packagesRes, bookingsRes, creditsRes] = await Promise.all([
+    const [packagesRes, bookingsRes, creditsRes, waiverRes] = await Promise.all([
       supabase
         .from('user_packages')
         .select('*, package:packages(*)')
@@ -56,11 +57,17 @@ export default async function ClassesPage({
         .select('id, class_type')
         .eq('user_id', user.id)
         .eq('used', false),
+      supabase
+        .from('user_waivers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle(),
     ])
     userPackages = packagesRes.data
     bookedSessionIds = (bookingsRes.data || []).filter((b) => b.status === 'confirmed').map((b) => b.session_id)
     waitlistedSessionIds = (bookingsRes.data || []).filter((b) => b.status === 'waitlist').map((b) => b.session_id)
     credits = creditsRes.data || []
+    hasAcceptedWaiver = !!waiverRes.data
   }
 
   // Fetch taken stations for all upcoming sessions + station map image
@@ -103,6 +110,7 @@ export default async function ClassesPage({
       takenStations={takenStations}
       stationMapUrl={studioSettings?.station_map_url ?? null}
       classTypes={classTypes || []}
+      hasAcceptedWaiver={hasAcceptedWaiver}
     />
   )
 }

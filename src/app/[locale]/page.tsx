@@ -1,6 +1,5 @@
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -12,9 +11,6 @@ import { HomepageContent } from '@/types'
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect(`/${locale}/account`)
 
   const { data: homepage } = await supabase.from('homepage_content').select('*').single()
   const t = await getTranslations({ locale, namespace: 'home' })
@@ -43,6 +39,24 @@ function HomeContent({
     homepage?.discipline1_image_url || null,
     homepage?.discipline2_image_url || null,
     homepage?.discipline3_image_url || null,
+  ]
+
+  const disciplines = [
+    {
+      num: '01',
+      title: (locale === 'es' ? homepage?.discipline1_title_es : homepage?.discipline1_title_en) || t('funcional_title'),
+      desc:  (locale === 'es' ? homepage?.discipline1_desc_es  : homepage?.discipline1_desc_en)  || t('funcional_desc'),
+    },
+    {
+      num: '02',
+      title: (locale === 'es' ? homepage?.discipline2_title_es : homepage?.discipline2_title_en) || t('reformer_title'),
+      desc:  (locale === 'es' ? homepage?.discipline2_desc_es  : homepage?.discipline2_desc_en)  || t('reformer_desc'),
+    },
+    {
+      num: '03',
+      title: (locale === 'es' ? homepage?.discipline3_title_es : homepage?.discipline3_title_en) || t('barre_title'),
+      desc:  (locale === 'es' ? homepage?.discipline3_desc_es  : homepage?.discipline3_desc_en)  || t('barre_desc'),
+    },
   ]
 
   return (
@@ -190,11 +204,7 @@ function HomeContent({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
-            {[
-              { num: '01', title: t('funcional_title'), desc: t('funcional_desc') },
-              { num: '02', title: t('reformer_title'),  desc: t('reformer_desc') },
-              { num: '03', title: t('barre_title'),     desc: t('barre_desc') },
-            ].map((d, i) => (
+            {disciplines.map((d, i) => (
               <div
                 key={d.num}
                 className="group bg-card rounded-3xl border border-border p-6 md:p-8 flex flex-col

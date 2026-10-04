@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Package } from '@/types'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { toast } from 'sonner'
+import WaiverModal from '@/components/WaiverModal'
 
 interface Props {
   packages: Package[]
   locale: string
   userId: string | null
+  hasAcceptedWaiver: boolean
 }
 
 interface AppliedCoupon {
@@ -24,9 +26,25 @@ interface AppliedCoupon {
   description: string | null
 }
 
-export default function PackagesList({ packages, locale, userId }: Props) {
+export default function PackagesList({ packages, locale, userId, hasAcceptedWaiver }: Props) {
   const t = useTranslations('packages')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [waiverAccepted, setWaiverAccepted] = useState(hasAcceptedWaiver)
+  const [showWaiver, setShowWaiver] = useState(false)
+  const pendingBuy = useState<{ pkg: Package; couponCode?: string } | null>(null)
+  const [pendingPkg, setPendingPkg] = pendingBuy
+
+  function handleBuyWithWaiver(pkg: Package, couponCode?: string) {
+    if (waiverAccepted) { handleBuy(pkg, couponCode); return }
+    setPendingPkg({ pkg, couponCode })
+    setShowWaiver(true)
+  }
+
+  function onWaiverAccepted() {
+    setWaiverAccepted(true)
+    setShowWaiver(false)
+    if (pendingPkg) { handleBuy(pendingPkg.pkg, pendingPkg.couponCode); setPendingPkg(null) }
+  }
 
   async function handleBuy(pkg: Package, couponCode?: string) {
     if (!userId) return
@@ -154,7 +172,7 @@ export default function PackagesList({ packages, locale, userId }: Props) {
         {userId ? (
           <div className="mt-auto space-y-2">
             <Button
-              onClick={() => handleBuy(pkg, appliedCoupon?.code)}
+              onClick={() => handleBuyWithWaiver(pkg, appliedCoupon?.code)}
               disabled={loadingId === pkg.id}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
@@ -252,6 +270,8 @@ export default function PackagesList({ packages, locale, userId }: Props) {
       <Section title={locale === 'es' ? 'Sesiones individuales' : 'Single sessions'} pkgs={singles} />
       <Section title={locale === 'es' ? 'Paquetes' : 'Packages'} pkgs={multi} />
       <Section title={locale === 'es' ? 'Acceso ilimitado' : 'Unlimited access'} pkgs={unlimited} />
+
+      {showWaiver && <WaiverModal onAccept={onWaiverAccepted} />}
     </div>
   )
 }

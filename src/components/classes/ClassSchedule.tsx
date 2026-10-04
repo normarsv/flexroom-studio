@@ -26,6 +26,7 @@ interface Props {
   takenStations: Record<string, number[]>
   stationMapUrl: string | null
   classTypes: ClassTypeConfig[]
+  hasAcceptedWaiver: boolean
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -35,7 +36,7 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl, classTypes }: Props) {
+export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl, classTypes, hasAcceptedWaiver }: Props) {
   const getTypeLabel = (key: string, loc: string) => {
     const ct = classTypes.find(c => c.key === key)
     if (ct) return loc === 'es' ? ct.name_es : ct.name_en
@@ -580,6 +581,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
           credits={credits}
           takenStations={takenStations[selectedSession.id] ?? []}
           stationMapUrl={stationMapUrl}
+          hasAcceptedWaiver={hasAcceptedWaiver}
           onClose={() => setSelectedSession(null)}
           onBook={(id) => setLocalBookedIds((prev) => [...prev, id])}
         />

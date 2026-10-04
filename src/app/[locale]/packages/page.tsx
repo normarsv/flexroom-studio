@@ -19,5 +19,15 @@ export default async function PackagesPage({
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  return <PackagesList packages={packages || []} locale={locale} userId={user?.id || null} />
+  let hasAcceptedWaiver = false
+  if (user) {
+    const { data } = await supabase
+      .from('user_waivers')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    hasAcceptedWaiver = !!data
+  }
+
+  return <PackagesList packages={packages || []} locale={locale} userId={user?.id || null} hasAcceptedWaiver={hasAcceptedWaiver} />
 }
