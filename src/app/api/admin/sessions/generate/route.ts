@@ -105,10 +105,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('class_sessions').update(updates).eq('id', id)
   }
 
-  // Delete recurring sessions that have no matching active template and no bookings
-  const activeTemplateIds = new Set(templates.map((t) => t.id))
+  // Delete any recurring session that wasn't matched to a template this run and has no bookings
   const toDelete = existing
-    .filter((s) => !matchedIds.has(s.id) && !activeTemplateIds.has(s.recurring_template_id) && s.spots_booked === 0)
+    .filter((s) => !matchedIds.has(s.id) && s.spots_booked === 0)
     .map((s) => s.id)
 
   if (toDelete.length > 0) {
