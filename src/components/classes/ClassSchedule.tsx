@@ -242,7 +242,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                 ? 'Tu clase ha sido reservada exitosamente. '
                 : 'Your class has been successfully booked. '}
               <button
-                onClick={() => router.push(`/${locale}/account`)}
+                onClick={() => setTimeout(() => router.push(`/${locale}/account`), 2500)}
                 className="font-medium underline"
               >
                 {locale === 'es' ? 'Ver mis clases' : 'View my bookings'}
