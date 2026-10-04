@@ -9,7 +9,8 @@ export default async function AdminClientsPage() {
       .from('profiles')
       .select('*, user_packages(id, expires_at, sessions_remaining, purchased_at, package:packages(name_es, price_mxn)), credits(id, class_type)')
       .eq('is_admin', false)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false })
+      .range(0, 4999),
     supabase
       .from('packages')
       .select('id, name_es, session_count, validity_days')
