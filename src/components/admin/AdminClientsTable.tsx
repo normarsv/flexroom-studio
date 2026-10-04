@@ -84,7 +84,7 @@ export default function AdminClientsTable({
 }) {
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'nuevos' | 'inactivos' | 'ingresaron'>('todos')
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'nuevos' | 'inactivos' | 'prospectos'>('todos')
 
   // Unified manage modal
   const [managingClient, setManagingClient] = useState<ClientRow | null>(null)
@@ -159,7 +159,9 @@ export default function AdminClientsTable({
     if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo')
     else if (statusFilter === 'nuevos') result = result.filter((c) => getClientStatus(c) === 'nuevo')
     else if (statusFilter === 'inactivos') result = result.filter((c) => getClientStatus(c) === 'inactivo')
-    else if (statusFilter === 'ingresaron') result = result.filter((c) => c.last_login_at != null)
+    else if (statusFilter === 'prospectos') result = result.filter((c) =>
+      !c.last_login_at && (!c.user_packages || c.user_packages.length === 0) && (!c.bookings || c.bookings.length === 0)
+    )
     const q = search.toLowerCase().trim()
     if (!q) return result
     return result.filter(
@@ -454,7 +456,7 @@ export default function AdminClientsTable({
           { key: 'activos',    label: 'Activos' },
           { key: 'nuevos',     label: 'Nuevos' },
           { key: 'inactivos',  label: 'Inactivos' },
-          { key: 'ingresaron', label: 'Ya ingresaron' },
+          { key: 'prospectos', label: 'Prospectos' },
         ] as const).map(({ key, label }) => (
           <button
             key={key}
