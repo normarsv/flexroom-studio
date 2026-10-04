@@ -36,14 +36,12 @@ export async function POST(request: NextRequest) {
     const dayTemplates = templates.filter((t) => t.day_of_week === dayOfWeek)
 
     for (const template of dayTemplates) {
-      // Check if session already exists
+      // Match by template ID + date to correctly handle template edits
       const { data: existing } = await supabase
         .from('class_sessions')
-        .select('id, capacity, spots_booked')
+        .select('id, start_time, duration_minutes, class_type, instructor_id, capacity, spots_booked')
         .eq('date', dateStr)
-        .eq('start_time', template.start_time)
-        .eq('class_type', template.class_type)
-        .eq('instructor_id', template.instructor_id)
+        .eq('recurring_template_id', template.id)
         .maybeSingle()
 
       if (!existing) {
@@ -59,12 +57,19 @@ export async function POST(request: NextRequest) {
           is_recurring: true,
           recurring_template_id: template.id,
         })
-      } else if (existing.capacity !== template.capacity && template.capacity >= existing.spots_booked) {
-        // Sync capacity from template if it changed and it's safe (won't overbook)
-        await supabase
-          .from('class_sessions')
-          .update({ capacity: template.capacity })
-          .eq('id', existing.id)
+      } else {
+        // Sync all changed fields from template (skip capacity if it would overbook)
+        const updates: Record<string, any> = {}
+        if (existing.start_time !== template.start_time) updates.start_time = template.start_time
+        if (existing.duration_minutes !== template.duration_minutes) updates.duration_minutes = template.duration_minutes
+        if (existing.class_type !== template.class_type) updates.class_type = template.class_type
+        if (existing.instructor_id !== template.instructor_id) updates.instructor_id = template.instructor_id
+        if (existing.capacity !== template.capacity && template.capacity >= existing.spots_booked) {
+          updates.capacity = template.capacity
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('class_sessions').update(updates).eq('id', existing.id)
+        }
       }
     }
   }
