@@ -1,3 +1,13 @@
+export interface Discipline {
+  id: string
+  title_es: string
+  title_en: string
+  desc_es: string
+  desc_en: string
+  image_url: string | null
+  sort_order: number
+}
+
 export type ClassType = string
 
 export interface ClassTypeConfig {

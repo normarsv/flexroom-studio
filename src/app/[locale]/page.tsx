@@ -6,25 +6,30 @@ import { Button } from '@/components/ui/button'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faLocationDot, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import { createClient } from '@/lib/supabase/server'
-import { HomepageContent } from '@/types'
+import { Discipline, HomepageContent } from '@/types'
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
   const supabase = await createClient()
 
-  const { data: homepage } = await supabase.from('homepage_content').select('*').single()
+  const [{ data: homepage }, { data: disciplines }] = await Promise.all([
+    supabase.from('homepage_content').select('*').single(),
+    supabase.from('disciplines').select('*').order('sort_order'),
+  ])
   const t = await getTranslations({ locale, namespace: 'home' })
 
-  return <HomeContent locale={locale} homepage={homepage} t={t} />
+  return <HomeContent locale={locale} homepage={homepage} disciplines={disciplines || []} t={t} />
 }
 
 function HomeContent({
   locale,
   homepage,
+  disciplines,
   t,
 }: {
   locale: string
   homepage: HomepageContent | null
+  disciplines: Discipline[]
   t: any
 }) {
   const heroSubtitle =
@@ -35,29 +40,13 @@ function HomeContent({
     t('about_text')
   const heroImageUrl = homepage?.hero_image_url || null
   const aboutImageUrl = homepage?.about_image_url || null
-  const disciplineImages = [
-    homepage?.discipline1_image_url || null,
-    homepage?.discipline2_image_url || null,
-    homepage?.discipline3_image_url || null,
-  ]
 
-  const disciplines = [
-    {
-      num: '01',
-      title: (locale === 'es' ? homepage?.discipline1_title_es : homepage?.discipline1_title_en) || t('funcional_title'),
-      desc:  (locale === 'es' ? homepage?.discipline1_desc_es  : homepage?.discipline1_desc_en)  || t('funcional_desc'),
-    },
-    {
-      num: '02',
-      title: (locale === 'es' ? homepage?.discipline2_title_es : homepage?.discipline2_title_en) || t('reformer_title'),
-      desc:  (locale === 'es' ? homepage?.discipline2_desc_es  : homepage?.discipline2_desc_en)  || t('reformer_desc'),
-    },
-    {
-      num: '03',
-      title: (locale === 'es' ? homepage?.discipline3_title_es : homepage?.discipline3_title_en) || t('barre_title'),
-      desc:  (locale === 'es' ? homepage?.discipline3_desc_es  : homepage?.discipline3_desc_en)  || t('barre_desc'),
-    },
-  ]
+  const disciplineItems = disciplines.map((d, i) => ({
+    num: String(i + 1).padStart(2, '0'),
+    title: locale === 'es' ? d.title_es : d.title_en,
+    desc: locale === 'es' ? d.desc_es : d.desc_en,
+    image: d.image_url,
+  }))
 
   return (
     <div className="overflow-x-hidden">
@@ -204,7 +193,7 @@ function HomeContent({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
-            {disciplines.map((d, i) => (
+            {disciplineItems.map((d) => (
               <div
                 key={d.num}
                 className="group bg-card rounded-3xl border border-border p-6 md:p-8 flex flex-col
@@ -215,9 +204,9 @@ function HomeContent({
               >
                 {/* Discipline image */}
                 <div className="w-[200px] h-[200px] rounded-full overflow-hidden mb-6 shrink-0 bg-[#F4EF71]/15 self-center">
-                  {disciplineImages[i] ? (
+                  {d.image ? (
                     <Image
-                      src={disciplineImages[i]!}
+                      src={d.image}
                       alt={d.title}
                       width={200}
                       height={200}

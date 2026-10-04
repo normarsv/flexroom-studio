@@ -9,11 +9,12 @@ export default async function AdminContenidoPage({
   const { locale } = await params
   const supabase = await createClient()
 
-  const [{ data: homepage }, { data: settings }, { data: images }] = await Promise.all([
+  const [{ data: homepage }, { data: settings }, { data: images }, { data: disciplines }] = await Promise.all([
     supabase.from('homepage_content').select('*').single(),
     supabase.from('studio_settings').select('*').eq('id', 1).single(),
     supabase.from('gallery_images').select('*').order('sort_order'),
+    supabase.from('disciplines').select('*').order('sort_order'),
   ])
 
-  return <AdminContenido homepage={homepage} settings={settings} locale={locale} images={images || []} />
+  return <AdminContenido homepage={homepage} settings={settings} locale={locale} images={images || []} disciplines={disciplines || []} />
 }

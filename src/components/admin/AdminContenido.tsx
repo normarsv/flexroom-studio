@@ -2,12 +2,12 @@
 
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { HomepageContent, StudioSettings, GalleryImage } from '@/types'
+import { Discipline, HomepageContent, StudioSettings, GalleryImage } from '@/types'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faUpload, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faUpload, faTrash, faPlus } from '@fortawesome/free-solid-svg-icons'
 import AdminGallery from './AdminGallery'
 
 interface Props {
@@ -15,11 +15,12 @@ interface Props {
   settings: StudioSettings | null
   locale: string
   images: GalleryImage[]
+  disciplines: Discipline[]
 }
 
 type Tab = 'homepage' | 'footer' | 'galeria'
 
-export default function AdminContenido({ homepage, settings, locale, images }: Props) {
+export default function AdminContenido({ homepage, settings, locale, images, disciplines: initialDisciplines }: Props) {
   const [tab, setTab] = useState<Tab>('homepage')
 
   // Homepage state
@@ -33,28 +34,17 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
   const [aboutTextEs, setAboutTextEs] = useState(homepage?.about_text_es || '')
   const [aboutTextEn, setAboutTextEn] = useState(homepage?.about_text_en || '')
   const [aboutImageUrl, setAboutImageUrl] = useState(homepage?.about_image_url || '')
-  const [discipline1ImageUrl, setDiscipline1ImageUrl] = useState(homepage?.discipline1_image_url || '')
-  const [discipline2ImageUrl, setDiscipline2ImageUrl] = useState(homepage?.discipline2_image_url || '')
-  const [discipline3ImageUrl, setDiscipline3ImageUrl] = useState(homepage?.discipline3_image_url || '')
-  const [disc1TitleEs, setDisc1TitleEs] = useState(homepage?.discipline1_title_es || '')
-  const [disc1TitleEn, setDisc1TitleEn] = useState(homepage?.discipline1_title_en || '')
-  const [disc1DescEs, setDisc1DescEs] = useState(homepage?.discipline1_desc_es || '')
-  const [disc1DescEn, setDisc1DescEn] = useState(homepage?.discipline1_desc_en || '')
-  const [disc2TitleEs, setDisc2TitleEs] = useState(homepage?.discipline2_title_es || '')
-  const [disc2TitleEn, setDisc2TitleEn] = useState(homepage?.discipline2_title_en || '')
-  const [disc2DescEs, setDisc2DescEs] = useState(homepage?.discipline2_desc_es || '')
-  const [disc2DescEn, setDisc2DescEn] = useState(homepage?.discipline2_desc_en || '')
-  const [disc3TitleEs, setDisc3TitleEs] = useState(homepage?.discipline3_title_es || '')
-  const [disc3TitleEn, setDisc3TitleEn] = useState(homepage?.discipline3_title_en || '')
-  const [disc3DescEs, setDisc3DescEs] = useState(homepage?.discipline3_desc_es || '')
-  const [disc3DescEn, setDisc3DescEn] = useState(homepage?.discipline3_desc_en || '')
   const [homepageLoading, setHomepageLoading] = useState(false)
 
   const heroImgRef = useRef<HTMLInputElement>(null)
   const aboutImgRef = useRef<HTMLInputElement>(null)
-  const disc1Ref = useRef<HTMLInputElement>(null)
-  const disc2Ref = useRef<HTMLInputElement>(null)
-  const disc3Ref = useRef<HTMLInputElement>(null)
+
+  // Disciplines state
+  const [disciplines, setDisciplines] = useState<Discipline[]>(initialDisciplines)
+  const [discSaving, setDiscSaving] = useState<string | null>(null)
+  const [discDeleting, setDiscDeleting] = useState<string | null>(null)
+  const [addingDisc, setAddingDisc] = useState(false)
+  const discImgRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // Footer state
   const [footerTaglineEs, setFooterTaglineEs] = useState(settings?.footer_tagline_es ?? '')
@@ -89,16 +79,6 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
     if (url) setAboutImageUrl(url)
   }
 
-  async function handleDisciplineImageUpload(e: React.ChangeEvent<HTMLInputElement>, index: 1 | 2 | 3) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadImage(file, `discipline${index}`)
-    if (!url) return
-    if (index === 1) setDiscipline1ImageUrl(url)
-    else if (index === 2) setDiscipline2ImageUrl(url)
-    else setDiscipline3ImageUrl(url)
-  }
-
   async function handleSaveHomepage() {
     setHomepageLoading(true)
     try {
@@ -116,21 +96,6 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
           about_text_es: aboutTextEs,
           about_text_en: aboutTextEn,
           about_image_url: aboutImageUrl || null,
-          discipline1_image_url: discipline1ImageUrl || null,
-          discipline2_image_url: discipline2ImageUrl || null,
-          discipline3_image_url: discipline3ImageUrl || null,
-          discipline1_title_es: disc1TitleEs || null,
-          discipline1_title_en: disc1TitleEn || null,
-          discipline1_desc_es: disc1DescEs || null,
-          discipline1_desc_en: disc1DescEn || null,
-          discipline2_title_es: disc2TitleEs || null,
-          discipline2_title_en: disc2TitleEn || null,
-          discipline2_desc_es: disc2DescEs || null,
-          discipline2_desc_en: disc2DescEn || null,
-          discipline3_title_es: disc3TitleEs || null,
-          discipline3_title_en: disc3TitleEn || null,
-          discipline3_desc_es: disc3DescEs || null,
-          discipline3_desc_en: disc3DescEn || null,
         }),
       })
       if (res.ok) toast.success('Página de inicio actualizada')
@@ -138,6 +103,67 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
     } finally {
       setHomepageLoading(false)
     }
+  }
+
+  function updateDisc(id: string, field: keyof Discipline, value: string) {
+    setDisciplines((prev) => prev.map((d) => d.id === id ? { ...d, [field]: value } : d))
+  }
+
+  async function handleSaveDisc(disc: Discipline) {
+    setDiscSaving(disc.id)
+    try {
+      const res = await fetch(`/api/admin/disciplines/${disc.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title_es: disc.title_es,
+          title_en: disc.title_en,
+          desc_es: disc.desc_es,
+          desc_en: disc.desc_en,
+          image_url: disc.image_url,
+        }),
+      })
+      if (res.ok) toast.success('Disciplina guardada')
+      else toast.error('Error al guardar')
+    } finally {
+      setDiscSaving(null)
+    }
+  }
+
+  async function handleDeleteDisc(id: string) {
+    if (!confirm('¿Eliminar esta disciplina del sitio?')) return
+    setDiscDeleting(id)
+    try {
+      const res = await fetch(`/api/admin/disciplines/${id}`, { method: 'DELETE' })
+      if (res.ok) setDisciplines((prev) => prev.filter((d) => d.id !== id))
+      else toast.error('Error al eliminar')
+    } finally {
+      setDiscDeleting(null)
+    }
+  }
+
+  async function handleAddDisc() {
+    setAddingDisc(true)
+    try {
+      const res = await fetch('/api/admin/disciplines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title_es: 'Nueva disciplina', title_en: 'New discipline', desc_es: '', desc_en: '', image_url: null }),
+      })
+      const data = await res.json()
+      if (res.ok) setDisciplines((prev) => [...prev, data])
+      else toast.error('Error al crear')
+    } finally {
+      setAddingDisc(false)
+    }
+  }
+
+  async function handleDiscImageUpload(e: React.ChangeEvent<HTMLInputElement>, discId: string) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadImage(file, `discipline-${discId}`)
+    if (!url) return
+    setDisciplines((prev) => prev.map((d) => d.id === discId ? { ...d, image_url: url } : d))
   }
 
   async function handleSaveFooter() {
@@ -288,51 +314,51 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
             </div>
           </div>
 
-          {/* Disciplines */}
-          <div className="space-y-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
-              Disciplinas
-            </h3>
-            {[
-              {
-                label: 'Disciplina 1',
-                url: discipline1ImageUrl, setUrl: setDiscipline1ImageUrl, ref: disc1Ref, index: 1 as const,
-                titleEs: disc1TitleEs, setTitleEs: setDisc1TitleEs,
-                titleEn: disc1TitleEn, setTitleEn: setDisc1TitleEn,
-                descEs: disc1DescEs,   setDescEs:  setDisc1DescEs,
-                descEn: disc1DescEn,   setDescEn:  setDisc1DescEn,
-                placeholderTitle: 'Funcional', placeholderDesc: 'Descripción de la disciplina...',
-              },
-              {
-                label: 'Disciplina 2',
-                url: discipline2ImageUrl, setUrl: setDiscipline2ImageUrl, ref: disc2Ref, index: 2 as const,
-                titleEs: disc2TitleEs, setTitleEs: setDisc2TitleEs,
-                titleEn: disc2TitleEn, setTitleEn: setDisc2TitleEn,
-                descEs: disc2DescEs,   setDescEs:  setDisc2DescEs,
-                descEn: disc2DescEn,   setDescEn:  setDisc2DescEn,
-                placeholderTitle: 'Reformer', placeholderDesc: 'Descripción de la disciplina...',
-              },
-              {
-                label: 'Disciplina 3',
-                url: discipline3ImageUrl, setUrl: setDiscipline3ImageUrl, ref: disc3Ref, index: 3 as const,
-                titleEs: disc3TitleEs, setTitleEs: setDisc3TitleEs,
-                titleEn: disc3TitleEn, setTitleEn: setDisc3TitleEn,
-                descEs: disc3DescEs,   setDescEs:  setDisc3DescEs,
-                descEn: disc3DescEn,   setDescEn:  setDisc3DescEn,
-                placeholderTitle: 'Barre', placeholderDesc: 'Descripción de la disciplina...',
-              },
-            ].map((d) => (
-              <div key={d.label} className="border border-border rounded-xl p-4 space-y-4">
-                <p className="text-sm font-semibold text-primary">{d.label}</p>
+          <Button onClick={handleSaveHomepage} disabled={homepageLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            {homepageLoading ? 'Guardando...' : 'Guardar página de inicio'}
+          </Button>
+        </div>
+      )}
+
+      {/* ── DISCIPLINAS ───────────────────────────────────── */}
+      {tab === 'homepage' && (
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Disciplinas</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Agrega, edita o elimina las disciplinas que aparecen en la página de inicio.</p>
+            </div>
+            <Button size="sm" onClick={handleAddDisc} disabled={addingDisc} className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
+              <FontAwesomeIcon icon={faPlus} className="w-3 h-3 mr-2" />
+              {addingDisc ? 'Agregando...' : 'Nueva disciplina'}
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {disciplines.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">No hay disciplinas. Agrega una.</p>
+            )}
+            {disciplines.map((d) => (
+              <div key={d.id} className="border border-border rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-primary">{d.title_es || 'Sin título'}</p>
+                  <button
+                    onClick={() => handleDeleteDisc(d.id)}
+                    disabled={discDeleting === d.id}
+                    className="text-xs text-destructive hover:opacity-70 disabled:opacity-40"
+                  >
+                    {discDeleting === d.id ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                </div>
 
                 {/* Image */}
                 <div className="flex items-center gap-4">
                   <div className="relative w-14 h-14 rounded-full overflow-hidden border border-border bg-secondary/50 shrink-0">
-                    {d.url ? (
+                    {d.image_url ? (
                       <>
-                        <Image src={d.url} alt={d.label} fill className="object-cover" />
+                        <Image src={d.image_url} alt={d.title_es} fill className="object-cover" />
                         <button
-                          onClick={() => d.setUrl('')}
+                          onClick={() => updateDisc(d.id, 'image_url', '')}
                           className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
                         >
                           <FontAwesomeIcon icon={faTrash} className="w-3 h-3 text-white" />
@@ -345,9 +371,13 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
                     )}
                   </div>
                   <div>
-                    <input ref={d.ref} type="file" accept="image/*" className="hidden" onChange={(e) => handleDisciplineImageUpload(e, d.index)} />
-                    <Button variant="outline" size="sm" onClick={() => d.ref.current?.click()} className="rounded-lg text-xs h-7 px-3">
-                      {d.url ? 'Cambiar imagen' : 'Subir imagen'}
+                    <input
+                      ref={(el) => { discImgRefs.current[d.id] = el }}
+                      type="file" accept="image/*" className="hidden"
+                      onChange={(e) => handleDiscImageUpload(e, d.id)}
+                    />
+                    <Button variant="outline" size="sm" onClick={() => discImgRefs.current[d.id]?.click()} className="rounded-lg text-xs h-7 px-3">
+                      {d.image_url ? 'Cambiar imagen' : 'Subir imagen'}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">Cuadrada, 200×200 px o más</p>
                   </div>
@@ -357,11 +387,11 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-primary block mb-1">Título (ES)</label>
-                    <input type="text" value={d.titleEs} onChange={(e) => d.setTitleEs(e.target.value)} placeholder={d.placeholderTitle} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                    <input type="text" value={d.title_es} onChange={(e) => updateDisc(d.id, 'title_es', e.target.value)} placeholder="Funcional" className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-primary block mb-1">Título (EN)</label>
-                    <input type="text" value={d.titleEn} onChange={(e) => d.setTitleEn(e.target.value)} placeholder={d.placeholderTitle} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                    <input type="text" value={d.title_en} onChange={(e) => updateDisc(d.id, 'title_en', e.target.value)} placeholder="Functional" className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                   </div>
                 </div>
 
@@ -369,20 +399,20 @@ export default function AdminContenido({ homepage, settings, locale, images }: P
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-primary block mb-1">Descripción (ES)</label>
-                    <textarea value={d.descEs} onChange={(e) => d.setDescEs(e.target.value)} rows={3} placeholder={d.placeholderDesc} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
+                    <textarea value={d.desc_es} onChange={(e) => updateDisc(d.id, 'desc_es', e.target.value)} rows={3} placeholder="Descripción de la disciplina..." className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-primary block mb-1">Descripción (EN)</label>
-                    <textarea value={d.descEn} onChange={(e) => d.setDescEn(e.target.value)} rows={3} placeholder={d.placeholderDesc} className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
+                    <textarea value={d.desc_en} onChange={(e) => updateDisc(d.id, 'desc_en', e.target.value)} rows={3} placeholder="Discipline description..." className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y" />
                   </div>
                 </div>
+
+                <Button size="sm" onClick={() => handleSaveDisc(d)} disabled={discSaving === d.id} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  {discSaving === d.id ? 'Guardando...' : 'Guardar'}
+                </Button>
               </div>
             ))}
           </div>
-
-          <Button onClick={handleSaveHomepage} disabled={homepageLoading} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            {homepageLoading ? 'Guardando...' : 'Guardar página de inicio'}
-          </Button>
         </div>
       )}
 
