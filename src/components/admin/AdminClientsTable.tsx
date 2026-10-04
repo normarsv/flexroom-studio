@@ -83,7 +83,7 @@ export default function AdminClientsTable({
 }) {
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'inactivos' | 'ingresaron'>('todos')
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'nuevos' | 'inactivos' | 'ingresaron'>('todos')
 
   // Unified manage modal
   const [managingClient, setManagingClient] = useState<ClientRow | null>(null)
@@ -151,7 +151,8 @@ export default function AdminClientsTable({
 
   const filtered = useMemo(() => {
     let result = clients
-    if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo' || getClientStatus(c) === 'nuevo')
+    if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo')
+    else if (statusFilter === 'nuevos') result = result.filter((c) => getClientStatus(c) === 'nuevo')
     else if (statusFilter === 'inactivos') result = result.filter((c) => getClientStatus(c) === 'inactivo')
     else if (statusFilter === 'ingresaron') result = result.filter((c) => c.last_login_at != null)
     const q = search.toLowerCase().trim()
@@ -445,7 +446,8 @@ export default function AdminClientsTable({
       <div className="flex gap-2 mb-3">
         {([
           { key: 'todos',      label: 'Todos' },
-          { key: 'activos',    label: 'Activos + Nuevos' },
+          { key: 'activos',    label: 'Activos' },
+          { key: 'nuevos',     label: 'Nuevos' },
           { key: 'inactivos',  label: 'Inactivos' },
           { key: 'ingresaron', label: 'Ya ingresaron' },
         ] as const).map(({ key, label }) => (
