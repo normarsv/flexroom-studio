@@ -298,7 +298,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setGeneratingWeeks(true)
     const res = await fetch('/api/admin/sessions/generate', { method: 'POST' })
     if (res.ok) {
-      toast.success('Clases generadas exitosamente')
+      const data = await res.json()
+      const parts = []
+      if (data.created > 0) parts.push(`${data.created} creadas`)
+      if (data.deleted > 0) parts.push(`${data.deleted} eliminadas`)
+      toast.success(parts.length > 0 ? `Horario sincronizado: ${parts.join(', ')}` : 'Horario ya estaba al día')
       window.location.reload()
     } else {
       toast.error('Error al generar clases')

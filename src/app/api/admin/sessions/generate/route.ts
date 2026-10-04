@@ -79,5 +79,26 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ created: sessions.length })
+  // Delete recurring sessions whose template no longer exists or is inactive,
+  // but only if they have no confirmed bookings (avoid deleting paid classes)
+  const activeTemplateIds = templates.map((t) => t.id)
+  const startStr = format(today, 'yyyy-MM-dd')
+  const endStr = format(addDays(today, 13), 'yyyy-MM-dd')
+
+  const { data: orphaned } = await supabase
+    .from('class_sessions')
+    .select('id, spots_booked')
+    .eq('is_recurring', true)
+    .gte('date', startStr)
+    .lte('date', endStr)
+    .not('recurring_template_id', 'in', `(${activeTemplateIds.join(',')})`)
+
+  const toDelete = (orphaned || []).filter((s) => s.spots_booked === 0).map((s) => s.id)
+  let deleted = 0
+  if (toDelete.length > 0) {
+    await supabase.from('class_sessions').delete().in('id', toDelete)
+    deleted = toDelete.length
+  }
+
+  return NextResponse.json({ created: sessions.length, deleted })
 }
