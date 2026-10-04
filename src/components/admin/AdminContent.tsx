@@ -45,6 +45,7 @@ export default function AdminContent({ policy, settings, locale }: Props) {
 
   useEffect(() => {
     if (tab === 'emails' && Object.keys(emailTemplates).length === 0) fetchEmailTemplates()
+    if (tab === 'stripe') loadStripeStatus()
   }, [tab])
 
   async function fetchEmailTemplates() {
@@ -95,7 +96,12 @@ export default function AdminContent({ policy, settings, locale }: Props) {
   async function handleToggleStripeMode() {
     const goingLive = !stripeLive
     if (goingLive) {
-      if (!stripeStatus?.liveKeySet || !stripeStatus?.liveWebhookSet) {
+      let status = stripeStatus
+      if (!status) {
+        const res = await fetch('/api/admin/stripe-status')
+        if (res.ok) { status = await res.json(); setStripeStatus(status) }
+      }
+      if (!status?.liveKeySet || !status?.liveWebhookSet) {
         toast.error('Agrega primero STRIPE_SECRET_KEY_LIVE y STRIPE_WEBHOOK_SECRET_LIVE en Vercel.')
         return
       }
