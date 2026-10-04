@@ -61,27 +61,32 @@ export async function POST(request: NextRequest) {
   }
 
   const stripe = getStripe()
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: 'mxn',
-          product_data: {
-            name: pkg.name_es,
-            description: pkg.description_es,
+  let session
+  try {
+    session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'mxn',
+            product_data: {
+              name: pkg.name_es,
+              description: pkg.description_es,
+            },
+            unit_amount: finalPrice * 100,
           },
-          unit_amount: finalPrice * 100,
+          quantity: 1,
         },
-        quantity: 1,
-      },
-    ],
-    mode: 'payment',
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/account?success=1`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/packages`,
-    customer_email: profile?.email,
-    metadata,
-  })
+      ],
+      mode: 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/account?success=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/packages`,
+      customer_email: profile?.email,
+      metadata,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 
   return NextResponse.json({ url: session.url })
 }

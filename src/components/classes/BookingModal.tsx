@@ -147,7 +147,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
-      else toast.error('Error al procesar el pago')
+      else toast.error(data.error || 'Error al procesar el pago')
     } catch {
       toast.error('Error al procesar el pago')
     } finally {

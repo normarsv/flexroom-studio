@@ -77,26 +77,31 @@ export async function POST(request: NextRequest) {
   }
 
   const stripe = getStripe()
-  const checkoutSession = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: 'mxn',
-          product_data: {
-            name: `${className} — ${session.date} ${session.start_time.slice(0, 5)}`,
+  let checkoutSession
+  try {
+    checkoutSession = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'mxn',
+            product_data: {
+              name: `${className} — ${session.date} ${session.start_time.slice(0, 5)}`,
+            },
+            unit_amount: finalPrice * 100,
           },
-          unit_amount: finalPrice * 100,
+          quantity: 1,
         },
-        quantity: 1,
-      },
-    ],
-    mode: 'payment',
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/classes?booking=success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/classes`,
-    customer_email: profile?.email,
-    metadata,
-  })
+      ],
+      mode: 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/classes?booking=success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/${locale}/classes`,
+      customer_email: profile?.email,
+      metadata,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 
   return NextResponse.json({ url: checkoutSession.url })
 }
