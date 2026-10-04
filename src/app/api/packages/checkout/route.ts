@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     metadata.couponId = appliedCouponId
   }
 
-  const stripe = await getStripe()
+  const stripe = getStripe()
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [

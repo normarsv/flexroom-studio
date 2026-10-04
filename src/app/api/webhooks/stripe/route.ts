@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')!
 
-  const [stripe, webhookSecret] = await Promise.all([getStripe(), getWebhookSecret()])
+  const stripe = getStripe()
+  const webhookSecret = getWebhookSecret()
 
   let event: Stripe.Event
 

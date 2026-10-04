@@ -402,161 +402,28 @@ export default function AdminContent({ policy, settings, locale }: Props) {
 
       {/* ── STRIPE ────────────────────────────────────────── */}
       {tab === 'stripe' && (
-        <div className="space-y-6">
-          {/* Mode status */}
-          <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-5">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-primary">Modo de pagos</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Controla si los pagos son de prueba (Sandbox) o reales (Live).
-                </p>
-              </div>
-              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full ${
-                stripeLive
-                  ? 'bg-green-100 text-green-800 border border-green-200'
-                  : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-              }`}>
-                <span className={`w-2 h-2 rounded-full ${stripeLive ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                {stripeLive ? 'LIVE — Pagos reales' : 'SANDBOX — Pagos de prueba'}
-              </span>
+        <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Stripe</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">Los pagos usan siempre las llaves Live configuradas en Vercel.</p>
             </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                role="switch"
-                aria-checked={stripeLive}
-                onClick={handleToggleStripeMode}
-                disabled={stripeLoading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${stripeLive ? 'bg-green-500' : 'bg-border'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${stripeLive ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-              <span className="text-sm text-primary font-medium">
-                {stripeLive ? 'Desactivar Live (volver a Sandbox)' : 'Activar modo Live'}
-              </span>
-            </div>
-
-            {stripeLive && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
-                <strong>Modo Live activo.</strong> Todos los pagos nuevos se cobrarán con tarjetas reales. Usa la tarjeta de prueba{' '}
-                <code className="bg-green-100 px-1 rounded">4242 4242 4242 4242</code> solo en Sandbox.
-              </div>
-            )}
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-green-100 text-green-800 border border-green-200">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              LIVE — Pagos reales
+            </span>
           </div>
-
-          {/* Env var checklist */}
-          <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-primary">Variables de entorno en Vercel</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Confirma que las llaves estén agregadas antes de activar Live.
-                </p>
-              </div>
-              <button
-                onClick={loadStripeStatus}
-                className="text-xs text-primary underline underline-offset-2 hover:opacity-70"
-              >
-                {stripeStatus ? 'Actualizar' : 'Verificar'}
-              </button>
-            </div>
-
-            {!stripeStatus ? (
-              <p className="text-sm text-muted-foreground">Haz clic en "Verificar" para revisar el estado.</p>
-            ) : (
-              <div className="space-y-2">
-                {[
-                  { label: 'STRIPE_SECRET_KEY_TEST', set: stripeStatus.testKeySet, required: 'sandbox' },
-                  { label: 'STRIPE_WEBHOOK_SECRET_TEST', set: stripeStatus.testWebhookSet, required: 'sandbox' },
-                  { label: 'STRIPE_SECRET_KEY_LIVE', set: stripeStatus.liveKeySet, required: 'live' },
-                  { label: 'STRIPE_WEBHOOK_SECRET_LIVE', set: stripeStatus.liveWebhookSet, required: 'live' },
-                ].map(({ label, set, required }) => (
-                  <div key={label} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${set ? 'bg-green-500' : 'bg-red-400'}`} />
-                      <code className="text-xs text-primary">{label}</code>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                        required === 'live'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {required === 'live' ? 'live' : 'sandbox'}
-                      </span>
-                    </div>
-                    <span className={`text-xs font-medium ${set ? 'text-green-600' : 'text-red-500'}`}>
-                      {set ? 'Configurada ✓' : 'Falta ✗'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="pt-2 border-t border-border">
-              <a
-                href="https://vercel.com/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary underline underline-offset-2 hover:opacity-70"
-              >
-                Ir a Vercel → Settings → Environment Variables →
-              </a>
-            </div>
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+            Todos los pagos se procesan en modo Live. Para cambiar las llaves, ve a Vercel → Settings → Environment Variables y actualiza <code className="bg-green-100 px-1 rounded">STRIPE_SECRET_KEY_LIVE</code> y <code className="bg-green-100 px-1 rounded">STRIPE_WEBHOOK_SECRET_LIVE</code>.
           </div>
-
-          {/* Go-live checklist */}
-          <div className="bg-white rounded-xl border border-border shadow-sm p-6 space-y-3">
-            <h2 className="text-lg font-semibold text-primary">Checklist para activar Live</h2>
-            <ol className="space-y-3 text-sm">
-              {[
-                {
-                  step: '1',
-                  text: 'En Stripe Dashboard, ve a Developers → API Keys y copia la llave secreta Live (sk_live_...).',
-                  link: { label: 'Abrir Stripe Dashboard →', href: 'https://dashboard.stripe.com/apikeys' },
-                },
-                {
-                  step: '2',
-                  text: 'En Vercel, agrega STRIPE_SECRET_KEY_LIVE con el valor copiado. Redeploy automático.',
-                },
-                {
-                  step: '3',
-                  text: 'En Stripe, crea un nuevo webhook Live apuntando a https://www.flexroomstudio.com/api/webhooks/stripe con el evento checkout.session.completed.',
-                  link: { label: 'Crear webhook →', href: 'https://dashboard.stripe.com/webhooks' },
-                },
-                {
-                  step: '4',
-                  text: 'Copia el Signing Secret (whsec_...) del webhook Live y agrégalo en Vercel como STRIPE_WEBHOOK_SECRET_LIVE.',
-                },
-                {
-                  step: '5',
-                  text: 'Haz clic en "Verificar" arriba y confirma que las 4 variables estén en verde.',
-                },
-                {
-                  step: '6',
-                  text: 'Activa el toggle de Live arriba. ¡Listo! Los pagos siguientes serán con tarjetas reales.',
-                },
-              ].map(({ step, text, link }) => (
-                <li key={step} className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                    {step}
-                  </span>
-                  <div className="text-muted-foreground leading-relaxed">
-                    {text}
-                    {link && (
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block mt-1 text-primary underline underline-offset-2 hover:opacity-70 text-xs"
-                      >
-                        {link.label}
-                      </a>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+          <a
+            href="https://dashboard.stripe.com/apikeys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary underline underline-offset-2 hover:opacity-70"
+          >
+            Abrir Stripe Dashboard →
+          </a>
         </div>
       )}
 
