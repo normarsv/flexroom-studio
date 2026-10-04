@@ -326,9 +326,14 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
             ) : (
               <div className="mb-6 space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  {locale === 'es'
-                    ? 'No tienes una membresía activa para esta clase.'
-                    : "You don't have an active membership for this class."}
+                  {!hasSinglePrice
+                    ? (locale === 'es'
+                        ? 'Para reservar esta clase contacta directamente al estudio.'
+                        : 'To book this class, contact the studio directly.')
+                    : (locale === 'es'
+                        ? 'No tienes una membresía activa para esta clase.'
+                        : "You don't have an active membership for this class.")
+                  }
                 </p>
                 {hasSinglePrice && (
                   <>
@@ -453,10 +458,10 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
           <Button variant="outline" onClick={onClose} className="flex-1">
             {locale === 'es' ? 'Cancelar' : 'Cancel'}
           </Button>
-          {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0 || !hasSinglePrice) && (
+          {(!userId || useCredit || compatiblePackages.length > 0 || creditCount > 0) && (
             <Button
               onClick={() => withWaiver(handleBook)}
-              disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage && hasSinglePrice) : !guestName || !guestEmail)}
+              disabled={loading || (needsStation && !station) || (userId ? (!useCredit && !selectedPackage) : !guestName || !guestEmail)}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading ? (locale === 'es' ? 'Reservando...' : 'Booking...') : t('book')}
