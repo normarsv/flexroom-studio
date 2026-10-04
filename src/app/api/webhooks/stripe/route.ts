@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
             station: station ? parseInt(station, 10) : null,
             price_paid: pricePaid,
           })
+          if (pricePaid && userId) {
+            const { data: prof } = await supabase.from('profiles').select('lifetime_value').eq('id', userId).single()
+            await supabase.from('profiles').update({ lifetime_value: (prof?.lifetime_value ?? 0) + pricePaid }).eq('id', userId)
+          }
         }
       }
     } else if (packageId) {
@@ -83,6 +87,13 @@ export async function POST(request: NextRequest) {
           expires_at: expiresAt.toISOString(),
           stripe_payment_intent_id: paymentIntentId,
         })
+
+        // Increment lifetime_value
+        const pricePaid = session.amount_total ? Math.round(session.amount_total / 100) : pkg.price_mxn
+        if (pricePaid && userId) {
+          const { data: prof } = await supabase.from('profiles').select('lifetime_value').eq('id', userId).single()
+          await supabase.from('profiles').update({ lifetime_value: (prof?.lifetime_value ?? 0) + pricePaid }).eq('id', userId)
+        }
 
         // Send confirmation email
         const { data: profile } = await supabase

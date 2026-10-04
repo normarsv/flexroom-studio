@@ -46,6 +46,7 @@ interface ClientRow {
   full_name: string | null
   email: string
   phone: string | null
+  lifetime_value: number | null
   credits: CreditEntry[]
   created_at: string
   last_login_at: string | null
@@ -64,14 +65,17 @@ type ManageTab = 'datos' | 'membresias' | 'creditos' | 'historial' | 'reservas'
 
 const FOUR_WEEKS_AGO = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
 
-function isClientActive(client: ClientRow): boolean {
-  // Active if: booked in last 4 weeks
-  if (client.bookings.some((b) => new Date(b.created_at) > FOUR_WEEKS_AGO)) return true
-  // Active if: logged in within last 4 weeks
-  if (client.last_login_at && new Date(client.last_login_at) > FOUR_WEEKS_AGO) return true
-  // Active if: has a non-expired membership
-  if (client.user_packages?.some((up) => new Date(up.expires_at) > new Date())) return true
-  return false
+type ClientStatus = 'activo' | 'nuevo' | 'inactivo'
+
+function getClientStatus(client: ClientRow): ClientStatus {
+  const hasActivity =
+    client.bookings.some((b) => new Date(b.created_at) > FOUR_WEEKS_AGO) ||
+    (client.last_login_at != null && new Date(client.last_login_at) > FOUR_WEEKS_AGO)
+  const hasActivePkg = client.user_packages?.some((up) => new Date(up.expires_at) > new Date())
+  // Never logged in but has a package = migrated, pending password setup
+  if (!client.last_login_at && hasActivePkg) return 'nuevo'
+  if (hasActivity || hasActivePkg) return 'activo'
+  return 'inactivo'
 }
 
 export default function AdminClientsTable({
@@ -83,6 +87,7 @@ export default function AdminClientsTable({
 }) {
   const [clients, setClients] = useState(initialClients)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'inactivos' | 'ingresaron'>('todos')
 
   // Unified manage modal
   const [managingClient, setManagingClient] = useState<ClientRow | null>(null)
@@ -149,14 +154,18 @@ export default function AdminClientsTable({
   }
 
   const filtered = useMemo(() => {
+    let result = clients
+    if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo' || getClientStatus(c) === 'nuevo')
+    else if (statusFilter === 'inactivos') result = result.filter((c) => getClientStatus(c) === 'inactivo')
+    else if (statusFilter === 'ingresaron') result = result.filter((c) => c.last_login_at != null)
     const q = search.toLowerCase().trim()
-    if (!q) return clients
-    return clients.filter(
+    if (!q) return result
+    return result.filter(
       (c) =>
         c.full_name?.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q)
     )
-  }, [clients, search])
+  }, [clients, search, statusFilter])
 
   function openManage(client: ClientRow, tab: ManageTab = 'datos') {
     setManagingClient(client)
@@ -420,7 +429,7 @@ export default function AdminClientsTable({
         c.credits?.length ?? 0,
         c.bookings.length,
         lastB ? new Date(lastB.created_at).toLocaleDateString('es-MX') : '',
-        isActive ? 'Activo' : 'Inactivo',
+        getClientStatus(c) === 'activo' ? 'Activo' : getClientStatus(c) === 'nuevo' ? 'Nuevo' : 'Inactivo',
         new Date(c.created_at).toLocaleDateString('es-MX'),
       ]
     })
@@ -436,6 +445,28 @@ export default function AdminClientsTable({
 
   return (
     <div>
+      {/* Filter pills */}
+      <div className="flex gap-2 mb-3">
+        {([
+          { key: 'todos',      label: 'Todos' },
+          { key: 'activos',    label: 'Activos + Nuevos' },
+          { key: 'inactivos',  label: 'Inactivos' },
+          { key: 'ingresaron', label: 'Ya ingresaron' },
+        ] as const).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setStatusFilter(key)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              statusFilter === key
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-white text-muted-foreground border-border hover:border-primary/40'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Search + actions */}
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
@@ -472,7 +503,6 @@ export default function AdminClientsTable({
                 <th className="text-left px-4 py-3 font-medium text-primary">Estado</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Membresías activas</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Reservas</th>
-                <th className="text-left px-4 py-3 font-medium text-primary">Total recibido</th>
                 <th className="text-left px-4 py-3 font-medium text-primary">Créditos</th>
                 <th className="text-left px-4 py-3 font-medium text-primary"></th>
               </tr>
@@ -483,21 +513,19 @@ export default function AdminClientsTable({
                   (up) => new Date(up.expires_at) > new Date()
                 ) || []
                 const totalBookings = client.bookings?.length ?? 0
-                const isActive = isClientActive(client)
+                const status = getClientStatus(client)
                 const creditCount = client.credits?.length ?? 0
-                const totalRecibido =
-                  (client.user_packages?.reduce((sum: number, up: UserPackageEntry) => sum + (up.package?.price_mxn ?? 0), 0) ?? 0) +
-                  (client.bookings?.reduce((sum: number, b: BookingEntry) => sum + (b.price_paid ?? 0), 0) ?? 0)
-
                 return (
                   <tr key={client.id} className="hover:bg-secondary/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-primary">{client.full_name || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{client.phone || <span className="text-xs italic">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isActive ? 'bg-green-100 text-green-700' : 'bg-secondary text-muted-foreground'
+                        status === 'activo' ? 'bg-green-100 text-green-700' :
+                        status === 'nuevo'  ? 'bg-blue-100 text-blue-700' :
+                        'bg-secondary text-muted-foreground'
                       }`}>
-                        {isActive ? 'Activo' : 'Inactivo'}
+                        {status === 'activo' ? 'Activo' : status === 'nuevo' ? 'Nuevo' : 'Inactivo'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -515,9 +543,6 @@ export default function AdminClientsTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-muted-foreground">{totalBookings || '—'}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-primary">
-                      {totalRecibido > 0 ? `$${totalRecibido.toLocaleString('es-MX')}` : <span className="text-muted-foreground text-xs">—</span>}
-                    </td>
                     <td className="px-4 py-3">
                       {creditCount > 0 ? (
                         <span className="text-xs font-semibold bg-[#F4EF71]/60 text-primary px-2 py-0.5 rounded-full">
@@ -910,9 +935,12 @@ export default function AdminClientsTable({
 
               {/* ── HISTORIAL ── */}
               {manageTab === 'historial' && (() => {
-                const totalRecibido =
+                const calculatedTotal =
                   managingClient.user_packages.reduce((sum, up) => sum + (up.package?.price_mxn ?? 0), 0) +
                   managingClient.bookings.reduce((sum, b) => sum + (b.price_paid ?? 0), 0)
+                const totalRecibido = (managingClient.lifetime_value && managingClient.lifetime_value > 0)
+                  ? managingClient.lifetime_value
+                  : calculatedTotal
                 const today = new Date().toISOString().slice(0, 10)
                 const attended = managingClient.bookings.filter((b) => b.attended && b.session)
                 const sortedAttended = [...attended].sort((a, b) => (a.session!.date > b.session!.date ? 1 : -1))

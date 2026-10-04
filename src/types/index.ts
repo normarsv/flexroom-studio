@@ -194,6 +194,8 @@ export interface Profile {
   avatar_url: string | null
   is_admin: boolean
   created_at: string
+  phone: string | null
+  lifetime_value: number
 }
 
 export interface Credit {
