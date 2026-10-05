@@ -43,6 +43,14 @@ export default function LoginForm({ locale }: { locale: string }) {
         toast.success(t('reset_sent'))
         setMode('login')
       } else if (mode === 'signup') {
+        if (!fullName.trim()) {
+          toast.error('Por favor ingresa tu nombre completo')
+          return
+        }
+        if (!phone.trim() || phone.replace(/\D/g, '').length < 7) {
+          toast.error('Por favor ingresa un número de teléfono válido')
+          return
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -140,6 +148,7 @@ export default function LoginForm({ locale }: { locale: string }) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
+                  minLength={7}
                   className="flex-1 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
