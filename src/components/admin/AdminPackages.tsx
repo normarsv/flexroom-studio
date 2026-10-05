@@ -5,15 +5,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPlus, faPencil, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Package, ClassType } from '@/types'
-import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { toast } from 'sonner'
 
 interface Props {
   packages: Package[]
+  classTypes: { key: string; name_es: string; name_en: string }[]
   locale: string
 }
-
-const CLASS_TYPES = Object.keys(CLASS_TYPE_LABELS) as ClassType[]
 
 const emptyForm = {
   name_es: '',
@@ -28,7 +26,7 @@ const emptyForm = {
   sort_order: 0,
 }
 
-export default function AdminPackages({ packages: initial, locale }: Props) {
+export default function AdminPackages({ packages: initial, classTypes, locale }: Props) {
   const [packages, setPackages] = useState(initial)
   const [editing, setEditing] = useState<Package | null | 'new'>(null)
   const [form, setForm] = useState(emptyForm)
@@ -200,14 +198,14 @@ export default function AdminPackages({ packages: initial, locale }: Props) {
               <div>
                 <label className="text-xs font-medium text-primary block mb-2">Tipos de clase permitidos (vacío = todos)</label>
                 <div className="flex flex-wrap gap-2">
-                  {CLASS_TYPES.map((type) => (
+                  {classTypes.map((ct) => (
                     <button
-                      key={type}
+                      key={ct.key}
                       type="button"
-                      onClick={() => toggleType(type)}
-                      className={`text-xs px-3 py-1 rounded-full border transition-colors ${form.allowed_class_types.includes(type) ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
+                      onClick={() => toggleType(ct.key as ClassType)}
+                      className={`text-xs px-3 py-1 rounded-full border transition-colors ${form.allowed_class_types.includes(ct.key as ClassType) ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'}`}
                     >
-                      {CLASS_TYPE_LABELS[type].es}
+                      {ct.name_es}
                     </button>
                   ))}
                 </div>

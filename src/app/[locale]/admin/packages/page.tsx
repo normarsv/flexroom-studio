@@ -9,10 +9,10 @@ export default async function AdminPackagesPage({
   const { locale } = await params
   const supabase = await createClient()
 
-  const { data: packages } = await supabase
-    .from('packages')
-    .select('*')
-    .order('sort_order', { ascending: true })
+  const [{ data: packages }, { data: classTypes }] = await Promise.all([
+    supabase.from('packages').select('*').order('sort_order', { ascending: true }),
+    supabase.from('class_types').select('key, name_es, name_en').eq('is_active', true).order('sort_order'),
+  ])
 
-  return <AdminPackages packages={packages || []} locale={locale} />
+  return <AdminPackages packages={packages || []} classTypes={classTypes || []} locale={locale} />
 }
