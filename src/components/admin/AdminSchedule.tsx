@@ -60,6 +60,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   // Attendance state
   const [attendanceSession, setAttendanceSession] = useState<ClassSession | null>(null)
   const [attendanceBookings, setAttendanceBookings] = useState<any[]>([])
+  const [waitlistBookings, setWaitlistBookings] = useState<any[]>([])
   const [loadingAttendance, setLoadingAttendance] = useState(false)
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null)
 
@@ -199,9 +200,13 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setAttendanceSession(session)
     setBlockedStations(session.blocked_stations || [])
     setLoadingAttendance(true)
-    const res = await fetch(`/api/admin/sessions/${session.id}/bookings`)
-    if (res.ok) {
-      const bookings = await res.json()
+    setWaitlistBookings([])
+    const [bookingsRes, waitlistRes] = await Promise.all([
+      fetch(`/api/admin/sessions/${session.id}/bookings`),
+      fetch(`/api/admin/sessions/${session.id}/waitlist`),
+    ])
+    if (bookingsRes.ok) {
+      const bookings = await bookingsRes.json()
       setAttendanceBookings(bookings)
       // Sync spots_booked to actual confirmed booking count
       const count = bookings.length
@@ -209,6 +214,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, spots_booked: count } : s))
     } else {
       toast.error('Error al cargar la lista')
+    }
+    if (waitlistRes.ok) {
+      setWaitlistBookings(await waitlistRes.json())
     }
     setLoadingAttendance(false)
   }
@@ -763,7 +771,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   {getTypeLabel(attendanceSession.class_type)} · {attendanceSession.start_time.slice(0, 5)} · {format(parseISO(attendanceSession.date), "d 'de' MMMM", { locale: es })}
                 </p>
               </div>
-              <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false) }} className="text-muted-foreground hover:text-primary p-1">
+              <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]) }} className="text-muted-foreground hover:text-primary p-1">
                 <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
               </button>
             </div>
@@ -1027,6 +1035,30 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               )}
             </div>
 
+            {/* Waitlist section */}
+            {waitlistBookings.length > 0 && (
+              <div className="px-5 pb-4 border-t border-border pt-4 shrink-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Lista de espera ({waitlistBookings.length})
+                </p>
+                <div className="space-y-1.5">
+                  {waitlistBookings.map((b, i) => {
+                    const name = b.profile?.full_name || b.guest_name || b.guest_email || 'Sin nombre'
+                    const email = b.profile?.email || b.guest_email || ''
+                    return (
+                      <div key={b.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-secondary/40 border border-border">
+                        <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-primary truncate">{name}</p>
+                          {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="p-4 border-t border-border shrink-0 flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">
                 {attendanceBookings.filter(b => b.attended === true).length} asistieron ·{' '}
@@ -1040,7 +1072,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                     Agregar
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => { setAttendanceSession(null); setShowAddBooking(false) }}>Cerrar</Button>
+                <Button size="sm" variant="outline" onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]) }}>Cerrar</Button>
               </div>
             </div>
           </div>
