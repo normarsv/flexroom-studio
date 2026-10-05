@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 
-async function checkAdmin(supabase: any) {
+async function checkAdmin() {
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
   const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
@@ -13,14 +15,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; packageId: string }> }
 ) {
   const { packageId } = await params
-  const supabase = await createClient()
-  if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!(await checkAdmin())) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await request.json()
   const updates: Record<string, any> = {}
   if (body.sessions_remaining !== undefined) updates.sessions_remaining = body.sessions_remaining
   if (body.expires_at !== undefined) updates.expires_at = body.expires_at
 
+  const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('user_packages')
     .update(updates)
@@ -37,9 +39,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; packageId: string }> }
 ) {
   const { packageId } = await params
-  const supabase = await createClient()
-  if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!(await checkAdmin())) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('user_packages')
     .delete()
