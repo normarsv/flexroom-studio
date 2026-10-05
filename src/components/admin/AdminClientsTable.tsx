@@ -698,6 +698,32 @@ export default function AdminClientsTable({
                       </Button>
                     </div>
                   </div>
+
+                  {/* Delete user */}
+                  <div className="border-t border-border pt-4">
+                    <Button
+                      variant="outline"
+                      className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                      onClick={async () => {
+                        if (!managingClient) return
+                        const confirmed = window.confirm(
+                          `¿Eliminar permanentemente a ${managingClient.full_name || managingClient.email}?\n\nEsto borrará su cuenta, membresías y datos. Esta acción no se puede deshacer.`
+                        )
+                        if (!confirmed) return
+                        const res = await fetch(`/api/admin/clients/${managingClient.id}`, { method: 'DELETE' })
+                        if (res.ok) {
+                          setClients(prev => prev.filter(c => c.id !== managingClient.id))
+                          closeManage()
+                          toast.success('Usuario eliminado')
+                        } else {
+                          const data = await res.json()
+                          toast.error(data.error || 'Error al eliminar')
+                        }
+                      }}
+                    >
+                      Eliminar usuario
+                    </Button>
+                  </div>
                 </div>
               )}
 
