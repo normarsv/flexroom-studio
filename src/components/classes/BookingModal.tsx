@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
@@ -62,6 +62,29 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
 
   const needsStation = REFORMER_TYPES.includes(session.class_type)
   const [station, setStation] = useState<number | null>(null)
+
+  // For reformer classes: fetch fresh confirmed bookings on mount so station
+  // availability is always current even if the page was loaded before a booking was made.
+  const [freshBookedStations, setFreshBookedStations] = useState<number[]>([])
+  useEffect(() => {
+    if (!needsStation) return
+    const client = createClient()
+    client
+      .from('bookings')
+      .select('station')
+      .eq('session_id', session.id)
+      .eq('status', 'confirmed')
+      .not('station', 'is', null)
+      .then(({ data }) => {
+        setFreshBookedStations((data ?? []).map((b: any) => b.station as number))
+      })
+  }, [session.id, needsStation])
+
+  // Effective taken = blocked stations + fresh confirmed bookings (for reformer)
+  // For non-reformer classes the server-side takenStations prop is sufficient.
+  const effectiveTakenStations = needsStation
+    ? [...new Set([...(session.blocked_stations ?? []), ...freshBookedStations])]
+    : takenStations
 
   const classLabel = CLASS_TYPE_LABELS[session.class_type]
   const dbClassType = classTypes.find((ct) => ct.key === session.class_type)
@@ -239,7 +262,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
               {STATION_ROWS.map((row, rowIdx) => (
                 <div key={rowIdx} className="flex gap-2 justify-center">
                   {row.map((num) => {
-                    const isTaken = takenStations.includes(num)
+                    const isTaken = effectiveTakenStations.includes(num)
                     const isSelected = station === num
                     return (
                       <button

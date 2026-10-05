@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esta clase fue cancelada' }, { status: 400 })
   }
 
-  const spotsLeft = session.capacity - session.spots_booked
+  const spotsLeft = REFORMER_TYPES.includes(session.class_type)
+    ? (8 - (session.blocked_stations?.length ?? 0)) - session.spots_booked
+    : session.capacity - session.spots_booked
   const isFull = spotsLeft <= 0
 
   // Waitlist join — only for logged-in users with a package

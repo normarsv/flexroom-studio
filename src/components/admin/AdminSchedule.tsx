@@ -1035,12 +1035,15 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               )}
             </div>
 
-            {/* Waitlist section */}
-            {waitlistBookings.length > 0 && (
+            {/* Waitlist section — always shown */}
+            {!loadingAttendance && (
               <div className="px-5 pb-4 border-t border-border pt-4 shrink-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Lista de espera ({waitlistBookings.length})
                 </p>
+                {waitlistBookings.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nadie en lista de espera</p>
+                ) : (
                 <div className="space-y-1.5">
                   {waitlistBookings.map((b, i) => {
                     const name = b.profile?.full_name || b.guest_name || b.guest_email || 'Sin nombre'
@@ -1056,6 +1059,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                     )
                   })}
                 </div>
+                )}
               </div>
             )}
 
