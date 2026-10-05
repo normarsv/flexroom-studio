@@ -74,7 +74,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   // Filter packages compatible with this class type
   const compatiblePackages = userPackages.filter((up) => {
     if (!up.package) return false
-    if (!up.package.allowed_class_types) return true // null = all
+    if (!up.package.allowed_class_types || up.package.allowed_class_types.length === 0) return true // null or [] = all
     return up.package.allowed_class_types.includes(session.class_type)
   })
 

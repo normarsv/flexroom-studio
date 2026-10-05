@@ -60,7 +60,11 @@ export default function AdminPackages({ packages: initial, locale }: Props) {
 
   async function handleSave() {
     setLoading(true)
-    const payload = { ...form, session_count: unlimited ? null : form.session_count }
+    const payload = {
+      ...form,
+      session_count: unlimited ? null : form.session_count,
+      allowed_class_types: form.allowed_class_types.length === 0 ? null : form.allowed_class_types,
+    }
     try {
       const isNew = editing === 'new'
       const url = isNew ? '/api/admin/packages' : `/api/admin/packages/${(editing as Package).id}`
