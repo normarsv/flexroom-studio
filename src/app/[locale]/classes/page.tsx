@@ -46,7 +46,7 @@ export default async function ClassesPage({
         .select('*, package:packages(*)')
         .eq('user_id', user.id)
         .gt('expires_at', new Date().toISOString())
-        .gt('sessions_remaining', 0),
+        .or('sessions_remaining.gt.0,sessions_remaining.is.null'),
       supabase
         .from('bookings')
         .select('session_id, status')
