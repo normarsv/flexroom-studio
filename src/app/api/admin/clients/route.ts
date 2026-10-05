@@ -14,15 +14,36 @@ export async function GET() {
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const adminClient = createAdminClient()
-  const { data, error } = await adminClient
-    .from('profiles')
-    .select('id, full_name, email')
-    .eq('is_admin', false)
-    .not('last_login_at', 'is', null)
-    .order('full_name')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data ?? [])
+  // Paginate profiles to bypass 1000-row limit
+  const allProfiles: any[] = []
+  let page = 0
+  while (true) {
+    const { data } = await adminClient
+      .from('profiles')
+      .select('id, full_name, email, last_login_at')
+      .eq('is_admin', false)
+      .order('full_name')
+      .range(page * 1000, page * 1000 + 999)
+    if (!data?.length) break
+    allProfiles.push(...data)
+    if (data.length < 1000) break
+    page++
+  }
+
+  // Get user_ids with a non-expired package
+  const { data: activePkgs } = await adminClient
+    .from('user_packages')
+    .select('user_id')
+    .gt('expires_at', new Date().toISOString())
+  const withPackage = new Set((activePkgs ?? []).map((p: any) => p.user_id))
+
+  // Keep: has logged in OR has active membership
+  const filtered = allProfiles
+    .filter(p => p.last_login_at != null || withPackage.has(p.id))
+    .map(({ last_login_at, ...p }) => p)
+
+  return NextResponse.json(filtered)
 }
 
 export async function POST(request: NextRequest) {
