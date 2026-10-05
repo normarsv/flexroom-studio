@@ -17,6 +17,15 @@ export async function POST(request: NextRequest) {
   if (!path) return NextResponse.json({ error: 'Path requerido' }, { status: 400 })
 
   const adminClient = createAdminClient()
+
+  // Ensure the bucket exists — create it if not
+  const { data: buckets } = await adminClient.storage.listBuckets()
+  const bucketExists = buckets?.some((b: any) => b.name === 'media')
+  if (!bucketExists) {
+    const { error: createError } = await adminClient.storage.createBucket('media', { public: true })
+    if (createError) return NextResponse.json({ error: `No se pudo crear el bucket: ${createError.message}` }, { status: 500 })
+  }
+
   const { data, error } = await adminClient.storage.from('media').createSignedUploadUrl(path)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
