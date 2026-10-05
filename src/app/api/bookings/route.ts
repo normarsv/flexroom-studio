@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       if (pkg.sessions_remaining !== null && pkg.sessions_remaining <= 0) {
         return NextResponse.json({ error: 'No tienes sesiones disponibles' }, { status: 400 })
       }
-      if (pkg.package?.allowed_class_types && !pkg.package.allowed_class_types.includes(session.class_type)) {
+      if (pkg.package?.allowed_class_types?.length > 0 && !pkg.package.allowed_class_types.includes(session.class_type)) {
         return NextResponse.json({ error: 'Tu membresía no incluye este tipo de clase' }, { status: 400 })
       }
       userPackage = pkg
