@@ -157,6 +157,14 @@ export default function AdminClientsTable({
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
+  const counts = useMemo(() => ({
+    todos:      clients.length,
+    activos:    clients.filter(c => getClientStatus(c) === 'activo').length,
+    nuevos:     clients.filter(c => getClientStatus(c) === 'nuevo').length,
+    inactivos:  clients.filter(c => getClientStatus(c) === 'inactivo').length,
+    prospectos: clients.filter(c => getClientStatus(c) === 'prospecto').length,
+  }), [clients])
+
   const filtered = useMemo(() => {
     let result = clients
     if (statusFilter === 'activos') result = result.filter((c) => getClientStatus(c) === 'activo')
@@ -463,13 +471,20 @@ export default function AdminClientsTable({
           <button
             key={key}
             onClick={() => setStatusFilter(key)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors flex items-center gap-1.5 ${
               statusFilter === key
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-white text-muted-foreground border-border hover:border-primary/40'
             }`}
           >
             {label}
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+              statusFilter === key
+                ? 'bg-white/20 text-primary-foreground'
+                : 'bg-muted text-muted-foreground'
+            }`}>
+              {counts[key]}
+            </span>
           </button>
         ))}
       </div>
