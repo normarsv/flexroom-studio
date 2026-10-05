@@ -9,6 +9,8 @@ import { GalleryImage } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
 interface Props {
   images: GalleryImage[]
   locale: string
@@ -23,27 +25,58 @@ export default function AdminGallery({ images: initial, locale }: Props) {
     if (files.length === 0) return
     setUploading(true)
 
+    let successCount = 0
+    let lastError = ''
+
     try {
       const supabase = createClient()
       for (const file of files) {
         const ext = file.name.split('.').pop()
         const path = `gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: uploadError } = await supabase.storage.from('media').upload(path, file)
-        if (uploadError) { toast.error(`Error: ${uploadError.message}`); continue }
 
+        // Get signed upload URL from server (uses service role, bypasses storage RLS)
+        const urlRes = await fetch('/api/admin/gallery/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path }),
+        })
+        if (!urlRes.ok) {
+          const { error } = await urlRes.json()
+          lastError = error || 'Error al generar URL de subida'
+          continue
+        }
+        const { signedUrl } = await urlRes.json()
+
+        // Upload directly to Supabase Storage via signed URL
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        })
+        if (!uploadRes.ok) {
+          lastError = `Error al subir ${file.name}`
+          continue
+        }
+
+        // Get the public URL and save the record
         const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
-
         const res = await fetch('/api/admin/gallery', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: publicUrl, alt_es: '', alt_en: '', sort_order: images.length }),
+          body: JSON.stringify({ url: publicUrl, alt_es: '', alt_en: '', sort_order: images.length + successCount }),
         })
         if (res.ok) {
           const { image } = await res.json()
           setImages((prev) => [...prev, image])
+          successCount++
+        } else {
+          const { error } = await res.json()
+          lastError = error || 'Error al guardar imagen'
         }
       }
-      toast.success('Imágenes subidas')
+
+      if (successCount > 0) toast.success(`${successCount} imagen${successCount > 1 ? 'es' : ''} subida${successCount > 1 ? 's' : ''}`)
+      if (lastError) toast.error(lastError)
     } finally {
       setUploading(false)
       e.target.value = ''
