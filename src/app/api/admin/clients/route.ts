@@ -18,6 +18,7 @@ export async function GET() {
     .from('profiles')
     .select('id, full_name, email')
     .eq('is_admin', false)
+    .not('last_login_at', 'is', null)
     .order('full_name')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
