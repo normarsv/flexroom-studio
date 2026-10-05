@@ -26,7 +26,6 @@ export default async function AccountPage({
       .select('*, session:class_sessions(*, instructor:instructors(*))')
       .eq('user_id', user.id)
       .neq('status', 'cancelled')
-      .order('booked_at', { ascending: false })
       .limit(50),
     supabase
       .from('user_packages')
@@ -50,9 +49,15 @@ export default async function AccountPage({
       .eq('used', false),
   ])
 
+  const bookings = (bookingsRes.data || []).sort((a, b) => {
+    const aDate = `${a.session?.date ?? ''}T${a.session?.start_time ?? ''}`
+    const bDate = `${b.session?.date ?? ''}T${b.session?.start_time ?? ''}`
+    return aDate.localeCompare(bDate)
+  })
+
   return (
     <AccountDashboard
-      bookings={bookingsRes.data || []}
+      bookings={bookings}
       userPackages={packagesRes.data || []}
       profile={profileRes.data}
       credits={creditsRes.data || []}
