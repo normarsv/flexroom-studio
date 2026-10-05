@@ -65,7 +65,12 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   // For reformer classes: fetch fresh confirmed bookings via API on mount so station
   // availability is always current. Uses server-side admin client to bypass RLS —
   // otherwise users can only see their own bookings and other people's stations appear free.
-  const [freshBookedStations, setFreshBookedStations] = useState<number[]>([])
+  // Seed with server-side known confirmed stations (takenStations minus blocked) so the
+  // first render is already correct and there's no visible flicker.
+  const blocked = session.blocked_stations ?? []
+  const [freshBookedStations, setFreshBookedStations] = useState<number[]>(
+    needsStation ? takenStations.filter((s) => !blocked.includes(s)) : []
+  )
   useEffect(() => {
     if (!needsStation) return
     fetch(`/api/sessions/${session.id}/taken-stations`)
