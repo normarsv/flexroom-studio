@@ -34,7 +34,7 @@ export default async function AdminClientsPage() {
     fetchAll(
       supabase,
       'user_packages',
-      'id, user_id, expires_at, sessions_remaining, purchased_at, package:packages(name_es, price_mxn)',
+      'id, user_id, expires_at, sessions_remaining, purchased_at, stripe_payment_intent_id, package:packages(name_es, price_mxn)',
       (q: any) => q
     ),
     fetchAll(

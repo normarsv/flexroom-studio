@@ -33,6 +33,7 @@ interface UserPackageEntry {
   expires_at: string
   sessions_remaining: number | null
   purchased_at: string
+  stripe_payment_intent_id: string | null
   package: { name_es: string; price_mxn: number } | null
 }
 
@@ -984,12 +985,10 @@ export default function AdminClientsTable({
 
               {/* ── HISTORIAL ── */}
               {manageTab === 'historial' && (() => {
-                const calculatedTotal =
-                  managingClient.user_packages.reduce((sum, up) => sum + (up.package?.price_mxn ?? 0), 0) +
-                  managingClient.bookings.reduce((sum, b) => sum + (b.price_paid ?? 0), 0)
-                const totalRecibido = (managingClient.lifetime_value && managingClient.lifetime_value > 0)
-                  ? managingClient.lifetime_value
-                  : calculatedTotal
+                const totalFitune = managingClient.lifetime_value ?? 0
+                const totalNuevo = managingClient.user_packages
+                  .filter(up => up.stripe_payment_intent_id != null)
+                  .reduce((sum, up) => sum + (up.package?.price_mxn ?? 0), 0)
                 const today = new Date().toISOString().slice(0, 10)
                 const attended = managingClient.bookings.filter((b) => b.attended && b.session)
                 const sortedAttended = [...attended].sort((a, b) => (a.session!.date > b.session!.date ? 1 : -1))
@@ -1023,8 +1022,12 @@ export default function AdminClientsTable({
                         </div>
                       ))}
                       <div className="bg-[#F4EF71]/30 border border-[#F4EF71] rounded-lg px-3 py-2.5">
-                        <p className="text-xs text-muted-foreground mb-0.5">Total recibido</p>
-                        <p className="text-sm font-bold text-primary">${totalRecibido.toLocaleString('es-MX')} MXN</p>
+                        <p className="text-xs text-muted-foreground mb-0.5">Fitune (historial)</p>
+                        <p className="text-sm font-bold text-primary">${totalFitune.toLocaleString('es-MX')} MXN</p>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                        <p className="text-xs text-muted-foreground mb-0.5">Plataforma nueva</p>
+                        <p className="text-sm font-bold text-green-700">${totalNuevo.toLocaleString('es-MX')} MXN</p>
                       </div>
                     </div>
 
