@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { ClassSession, ClassTypeConfig, UserPackage } from '@/types'
 import WaiverModal from '@/components/WaiverModal'
 import { CLASS_TYPE_LABELS, SINGLE_SESSION_PRICES_MXN } from '@/lib/constants'
-import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -63,21 +62,15 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const needsStation = REFORMER_TYPES.includes(session.class_type)
   const [station, setStation] = useState<number | null>(null)
 
-  // For reformer classes: fetch fresh confirmed bookings on mount so station
-  // availability is always current even if the page was loaded before a booking was made.
+  // For reformer classes: fetch fresh confirmed bookings via API on mount so station
+  // availability is always current. Uses server-side admin client to bypass RLS —
+  // otherwise users can only see their own bookings and other people's stations appear free.
   const [freshBookedStations, setFreshBookedStations] = useState<number[]>([])
   useEffect(() => {
     if (!needsStation) return
-    const client = createClient()
-    client
-      .from('bookings')
-      .select('station')
-      .eq('session_id', session.id)
-      .eq('status', 'confirmed')
-      .not('station', 'is', null)
-      .then(({ data }) => {
-        setFreshBookedStations((data ?? []).map((b: any) => b.station as number))
-      })
+    fetch(`/api/sessions/${session.id}/taken-stations`)
+      .then((r) => r.json())
+      .then(({ stations }) => { if (Array.isArray(stations)) setFreshBookedStations(stations) })
   }, [session.id, needsStation])
 
   // Effective taken = blocked stations + fresh confirmed bookings (for reformer)
