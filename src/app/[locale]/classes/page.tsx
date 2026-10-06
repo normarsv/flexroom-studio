@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import ClassSchedule from '@/components/classes/ClassSchedule'
 
 export const dynamic = 'force-dynamic'
@@ -74,7 +75,10 @@ export default async function ClassesPage({
   const sessionIds = (sessions || []).map((s) => s.id)
   const takenStations: Record<string, number[]> = {}
   if (sessionIds.length > 0) {
-    const { data: stationBookings } = await supabase
+    // Use admin client to bypass RLS — we need ALL confirmed station bookings,
+    // not just the current user's own bookings.
+    const adminClient = createAdminClient()
+    const { data: stationBookings } = await adminClient
       .from('bookings')
       .select('session_id, station')
       .in('session_id', sessionIds)
