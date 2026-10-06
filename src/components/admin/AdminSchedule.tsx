@@ -22,6 +22,7 @@ interface Props {
   classTypes: ClassTypeConfig[]
   locale: string
   isAdmin?: boolean
+  waitlistCounts?: Record<string, number>
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -31,12 +32,13 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, events: initialEvents, classTypes: initialClassTypes, locale, isAdmin = false }: Props) {
+export default function AdminSchedule({ sessions: initial, instructors, templates: initialTemplates, requests, events: initialEvents, classTypes: initialClassTypes, locale, isAdmin = false, waitlistCounts: initialWaitlistCounts = {} }: Props) {
   const [sessions, setSessions] = useState(initial)
   const [templates, setTemplates] = useState(initialTemplates)
   const [requestList, setRequestList] = useState(requests)
   const [events, setEvents] = useState(initialEvents)
   const [classTypes, setClassTypes] = useState<ClassTypeConfig[]>(initialClassTypes)
+  const [waitlistCounts, setWaitlistCounts] = useState<Record<string, number>>(initialWaitlistCounts)
   const [tab, setTab] = useState<'upcoming' | 'past' | 'recurring' | 'requests' | 'events' | 'types' | 'calendar'>('upcoming')
 
   // Past sessions state
@@ -422,8 +424,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     if (res.ok) {
       setWaitlistBookings((prev) => prev.filter((b) => b.id !== bookingId))
       setSessions((prev) => prev.map((s) => s.id === attendanceSession?.id ? { ...s, spots_booked: s.spots_booked + 1 } : s))
-      // Reload confirmed bookings to show the promoted person
       if (attendanceSession) {
+        setWaitlistCounts((prev) => {
+          const n = (prev[attendanceSession.id] || 1) - 1
+          return { ...prev, [attendanceSession.id]: Math.max(0, n) }
+        })
         const bookingsRes = await fetch(`/api/admin/sessions/${attendanceSession.id}/bookings`)
         if (bookingsRes.ok) setAttendanceBookings(await bookingsRes.json())
       }
@@ -435,6 +440,14 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       toast.error(data.error || 'Error al promover')
     }
     setSavingPromotion(false)
+  }
+
+  function buildWaitlistWhatsappUrl(phone: string, name: string, session: ClassSession) {
+    const digits = phone.replace(/\D/g, '')
+    const intl = digits.startsWith('52') ? digits : `52${digits}`
+    const dateLabel = format(parseISO(session.date), "d 'de' MMMM", { locale: es })
+    const msg = `Hola ${name}, te informamos que se liberó un lugar en la clase de ${getTypeLabel(session.class_type)} del ${dateLabel} a las ${session.start_time.slice(0, 5)}. ¿Te gustaría confirmarlo?`
+    return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`
   }
 
   async function generateFromTemplates() {
@@ -525,6 +538,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                       </span>
                       {session.status === 'cancelled' && (
                         <Badge variant="destructive" className="text-xs">Cancelada</Badge>
+                      )}
+                      {(waitlistCounts[session.id] ?? 0) > 0 && session.status !== 'cancelled' && (
+                        <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300 shrink-0">
+                          {waitlistCounts[session.id]} en espera
+                        </span>
                       )}
                       <div className="ml-auto flex gap-1">
                         {session.status !== 'cancelled' && (
@@ -1282,6 +1300,21 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             {/* Waitlist section — always shown */}
             {!loadingAttendance && (
               <div className="px-5 pb-4 border-t border-border pt-4 shrink-0">
+                {/* Alert when there are waitlisted people AND a free spot */}
+                {(() => {
+                  if (!attendanceSession || waitlistBookings.length === 0) return null
+                  const isReformer = REFORMER_TYPES.includes(attendanceSession.class_type)
+                  const spotsLeft = isReformer
+                    ? (8 - (attendanceSession.blocked_stations?.length ?? 0)) - attendanceSession.spots_booked
+                    : attendanceSession.capacity - attendanceSession.spots_booked
+                  if (spotsLeft <= 0) return null
+                  return (
+                    <div className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-800 text-xs">
+                      <span className="text-base leading-none shrink-0">⚠️</span>
+                      <span>Hay <strong>{spotsLeft} lugar{spotsLeft !== 1 ? 'es' : ''} disponible{spotsLeft !== 1 ? 's' : ''}</strong> y {waitlistBookings.length} persona{waitlistBookings.length !== 1 ? 's' : ''} en lista de espera. Considera promoverlas.</span>
+                    </div>
+                  )
+                })()}
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Lista de espera ({waitlistBookings.length})
                 </p>
@@ -1301,20 +1334,33 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
                         </div>
                         {isAdmin && (
-                          <button
-                            onClick={() => {
-                              if (isReformer) {
-                                setPromotingBooking({ id: b.id, name })
-                                setPromoteStation(null)
-                              } else {
-                                handlePromote(b.id)
-                              }
-                            }}
-                            title="Mover a confirmadas"
-                            className="text-xs font-medium px-2 py-1 rounded-lg bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors shrink-0"
-                          >
-                            Promover
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {b.profile?.phone && attendanceSession && (
+                              <a
+                                href={buildWaitlistWhatsappUrl(b.profile.phone, name, attendanceSession)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Avisar por WhatsApp"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
+                              >
+                                <FontAwesomeIcon icon={faWhatsapp} className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (isReformer) {
+                                  setPromotingBooking({ id: b.id, name })
+                                  setPromoteStation(null)
+                                } else {
+                                  handlePromote(b.id)
+                                }
+                              }}
+                              title="Mover a confirmadas"
+                              className="text-xs font-medium px-2 py-1 rounded-lg bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors"
+                            >
+                              Promover
+                            </button>
+                          </div>
                         )}
                       </div>
                     )
@@ -1670,6 +1716,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           <p className={`font-semibold leading-tight mt-0.5 ${isFull ? 'text-red-500' : 'text-primary/60'}`}>
                             {session.spots_booked}/{session.capacity}
                           </p>
+                          {(waitlistCounts[session.id] ?? 0) > 0 && !isCancelled && (
+                            <p className="text-amber-600 font-semibold leading-tight">⏳ {waitlistCounts[session.id]}</p>
+                          )}
                         </button>
                       )
                     })}

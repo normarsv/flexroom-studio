@@ -48,6 +48,16 @@ export default async function AdminSchedulePage({
     supabase.from('class_types').select('*').order('sort_order'),
   ])
 
+  // Fetch waitlist counts for upcoming sessions
+  const upcomingIds = (sessionsRes.data || []).map((s) => s.id)
+  const waitlistRows = upcomingIds.length > 0
+    ? (await supabase.from('bookings').select('session_id').eq('status', 'waitlist').in('session_id', upcomingIds)).data || []
+    : []
+  const waitlistCounts: Record<string, number> = {}
+  for (const row of waitlistRows) {
+    waitlistCounts[row.session_id] = (waitlistCounts[row.session_id] || 0) + 1
+  }
+
   return (
     <AdminSchedule
       sessions={sessionsRes.data || []}
@@ -58,6 +68,7 @@ export default async function AdminSchedulePage({
       classTypes={classTypesRes.data || []}
       locale={locale}
       isAdmin={isAdmin}
+      waitlistCounts={waitlistCounts}
     />
   )
 }

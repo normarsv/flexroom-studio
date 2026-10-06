@@ -20,7 +20,7 @@ export async function GET(
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('bookings')
-    .select('id, user_id, guest_name, guest_email, booked_at, profile:profiles(full_name, email)')
+    .select('id, user_id, guest_name, guest_email, booked_at, profile:profiles(full_name, email, phone)')
     .eq('session_id', id)
     .eq('status', 'waitlist')
     .order('booked_at', { ascending: true })
