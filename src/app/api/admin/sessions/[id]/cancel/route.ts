@@ -22,16 +22,20 @@ export async function POST(
 
   const adminClient = createAdminClient()
 
-  // Fetch session + confirmed bookings before cancelling
+  // Fetch session + confirmed bookings (with package info and phone for WhatsApp)
   const [sessionRes, bookingsRes] = await Promise.all([
     adminClient.from('class_sessions').select('*, instructor:instructors(*)').eq('id', id).single(),
     adminClient
       .from('bookings')
-      .select('user_id, guest_email, guest_name, profiles:profiles(email, full_name)')
+      .select('id, user_id, user_package_id, guest_email, guest_name, payment_status, profile:profiles(email, full_name, phone)')
       .eq('session_id', id)
       .eq('status', 'confirmed'),
   ])
 
+  const session = sessionRes.data
+  const bookings = bookingsRes.data || []
+
+  // Cancel the session
   const { error } = await adminClient
     .from('class_sessions')
     .update({ status: 'cancelled' })
@@ -39,18 +43,62 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Notify all confirmed clients
-  if (sessionRes.data && bookingsRes.data) {
-    const session = sessionRes.data
-    for (const booking of bookingsRes.data) {
-      const profile = (booking as any).profiles
-      const email = profile?.email || (booking as any).guest_email
-      const name = profile?.full_name || (booking as any).guest_name || email
-      if (email) {
-        sendSessionCancelledNotification({ to: email, name, session }).catch(console.error)
+  // Process refunds + cancel each confirmed booking
+  const registrants: { name: string; phone: string | null; isGuest: boolean; refundType: 'package' | 'credit' | 'none' | 'guest' }[] = []
+
+  for (const booking of bookings) {
+    const profile = (booking as any).profile
+    const isGuest = !booking.user_id
+    const isPaid = booking.payment_status === 'paid'
+    let refundType: 'package' | 'credit' | 'none' | 'guest' = 'none'
+
+    if (isGuest) {
+      refundType = 'guest'
+    } else if (isPaid) {
+      if (booking.user_package_id) {
+        // Restore one session to the package (unless unlimited)
+        const { data: up } = await adminClient
+          .from('user_packages')
+          .select('sessions_remaining')
+          .eq('id', booking.user_package_id)
+          .single()
+        if (up && up.sessions_remaining !== null) {
+          await adminClient
+            .from('user_packages')
+            .update({ sessions_remaining: up.sessions_remaining + 1 })
+            .eq('id', booking.user_package_id)
+        }
+        refundType = 'package'
+      } else if (booking.user_id) {
+        // Grant a credit of the same class type
+        await adminClient
+          .from('credits')
+          .insert({ user_id: booking.user_id, class_type: session.class_type })
+        refundType = 'credit'
       }
+    }
+
+    registrants.push({
+      name: profile?.full_name || booking.guest_name || booking.guest_email || 'Sin nombre',
+      phone: profile?.phone || null,
+      isGuest,
+      refundType,
+    })
+
+    // Send email notification
+    const email = profile?.email || booking.guest_email
+    const name = profile?.full_name || booking.guest_name || email
+    if (email && session) {
+      sendSessionCancelledNotification({ to: email, name, session }).catch(console.error)
     }
   }
 
-  return NextResponse.json({ success: true })
+  // Mark all confirmed bookings as cancelled
+  await adminClient
+    .from('bookings')
+    .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+    .eq('session_id', id)
+    .eq('status', 'confirmed')
+
+  return NextResponse.json({ success: true, registrants })
 }

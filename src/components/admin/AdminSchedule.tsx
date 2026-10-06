@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { format, parseISO, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen, faRotateRight } from '@fortawesome/free-solid-svg-icons'
+import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClassSession, ClassType, ClassTypeConfig, Instructor, RecurringTemplate } from '@/types'
@@ -57,6 +58,13 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [templateForm, setTemplateForm] = useState({ day_of_week: 1, start_time: '08:00', duration_minutes: 50, class_type: 'funcional' as ClassType, instructor_id: '', capacity: 5 })
   const [savingTemplate, setSavingTemplate] = useState(false)
 
+  // Cancel result modal state
+  const [cancelResult, setCancelResult] = useState<{
+    session: ClassSession
+    registrants: { name: string; phone: string | null; isGuest: boolean; refundType: 'package' | 'credit' | 'none' | 'guest' }[]
+  } | null>(null)
+  const [whatsappMsg, setWhatsappMsg] = useState('')
+
   // Attendance state
   const [attendanceSession, setAttendanceSession] = useState<ClassSession | null>(null)
   const [attendanceBookings, setAttendanceBookings] = useState<any[]>([])
@@ -101,15 +109,41 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const getTypeColor = (key: string) => classTypes.find(c => c.key === key)?.color || '#868686'
 
   async function handleCancel(session: ClassSession) {
-    if (!confirm('¿Cancelar esta clase?')) return
+    if (!confirm('¿Cancelar esta clase? Se reembolsarán los créditos automáticamente a los registrados.')) return
     const res = await fetch(`/api/admin/sessions/${session.id}/cancel`, { method: 'POST' })
+    const data = await res.json()
     if (res.ok) {
       setSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'cancelled' } : s))
       setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'cancelled' } : s))
       toast.success('Clase cancelada')
+      if (data.registrants?.length > 0) {
+        const dateLabel = `${getTypeLabel(session.class_type)} del ${format(parseISO(session.date), "d 'de' MMMM", { locale: es })} a las ${session.start_time.slice(0, 5)}`
+        setWhatsappMsg(`Hola, te avisamos que la clase de ${dateLabel} ha sido cancelada. Disculpa los inconvenientes.`)
+        setCancelResult({ session, registrants: data.registrants })
+      }
     } else {
       toast.error('Error al cancelar')
     }
+  }
+
+  async function handleUncancel(session: ClassSession) {
+    if (!confirm('¿Reactivar esta clase? Se restaurarán las reservas y se revertirán los reembolsos otorgados.')) return
+    const res = await fetch(`/api/admin/sessions/${session.id}/uncancel`, { method: 'POST' })
+    if (res.ok) {
+      setSessions((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'scheduled' } : s))
+      setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'scheduled' } : s))
+      toast.success('Clase reactivada')
+    } else {
+      toast.error('Error al reactivar')
+    }
+  }
+
+  function buildWhatsappUrl(phone: string, name: string) {
+    const digits = phone.replace(/\D/g, '')
+    // Add Mexico country code if not present (10-digit MX numbers)
+    const intl = digits.startsWith('52') ? digits : `52${digits}`
+    const msg = whatsappMsg.replace('[nombre]', name)
+    return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`
   }
 
   async function handleAcknowledge(id: string) {
@@ -427,9 +461,13 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                         <Button variant="ghost" size="sm" onClick={() => setEditingSession(session)}>
                           <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
                         </Button>
-                        {session.status !== 'cancelled' && (
+                        {session.status !== 'cancelled' ? (
                           <Button variant="ghost" size="sm" onClick={() => handleCancel(session)} className="text-destructive hover:text-destructive">
                             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" onClick={() => handleUncancel(session)} className="text-green-600 hover:text-green-700" title="Reactivar clase">
+                            <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
                           </Button>
                         )}
                       </div>
@@ -509,7 +547,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                         <Button variant="ghost" size="sm" onClick={() => setEditingSession(event)}>
                           <FontAwesomeIcon icon={faPencil} className="w-3.5 h-3.5" />
                         </Button>
-                        {event.status !== 'cancelled' && (
+                        {event.status !== 'cancelled' ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -518,6 +556,16 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             title="Cancelar evento"
                           >
                             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleUncancel(event)}
+                            className="text-green-600 hover:text-green-700"
+                            title="Reactivar evento"
+                          >
+                            <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
                           </Button>
                         )}
                         <Button
@@ -1348,6 +1396,78 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CANCEL RESULT MODAL ─────────────────────────────────── */}
+      {cancelResult !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
+              <div>
+                <h2 className="font-semibold text-primary">Clase cancelada</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {cancelResult.registrants.length} persona{cancelResult.registrants.length !== 1 ? 's' : ''} registrada{cancelResult.registrants.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <button onClick={() => setCancelResult(null)} className="text-muted-foreground hover:text-primary p-1">
+                <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-5 space-y-4">
+              {/* Editable WhatsApp message */}
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Mensaje de WhatsApp</label>
+                <textarea
+                  value={whatsappMsg}
+                  onChange={(e) => setWhatsappMsg(e.target.value)}
+                  rows={3}
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Se enviará este mensaje al hacer clic en el ícono de WhatsApp de cada persona.</p>
+              </div>
+
+              {/* Registrant list */}
+              <div className="space-y-2">
+                {cancelResult.registrants.map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-secondary/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-primary truncate">{r.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {r.refundType === 'package' && 'Sesión devuelta a la membresía'}
+                        {r.refundType === 'credit' && 'Crédito de clase otorgado'}
+                        {r.refundType === 'none' && 'Sin reembolso (pago pendiente)'}
+                        {r.refundType === 'guest' && 'Invitado — no recibe crédito'}
+                      </p>
+                    </div>
+                    {!r.isGuest && r.phone ? (
+                      <a
+                        href={buildWhatsappUrl(r.phone, r.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Enviar WhatsApp"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors shrink-0"
+                      >
+                        <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
+                      </a>
+                    ) : !r.isGuest ? (
+                      <span className="text-xs text-muted-foreground shrink-0">Sin tel.</span>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border shrink-0">
+              <button
+                onClick={() => setCancelResult(null)}
+                className="w-full py-2 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                Listo
+              </button>
             </div>
           </div>
         </div>
