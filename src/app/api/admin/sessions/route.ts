@@ -8,6 +8,33 @@ async function checkAdmin(supabase: any) {
   return profile?.is_admin === true
 }
 
+export async function GET(request: NextRequest) {
+  const supabase = await createClient()
+  if (!(await checkAdmin(supabase))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const from = searchParams.get('from')
+  const to = searchParams.get('to')
+
+  if (!from || !to) return NextResponse.json({ error: 'from y to requeridos' }, { status: 400 })
+
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const adminClient = createAdminClient()
+
+  const { data, error } = await adminClient
+    .from('class_sessions')
+    .select('*, instructor:instructors(*)')
+    .gte('date', from)
+    .lte('date', to)
+    .order('date', { ascending: false })
+    .order('start_time', { ascending: false })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) {

@@ -37,7 +37,30 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [requestList, setRequestList] = useState(requests)
   const [events, setEvents] = useState(initialEvents)
   const [classTypes, setClassTypes] = useState<ClassTypeConfig[]>(initialClassTypes)
-  const [tab, setTab] = useState<'upcoming' | 'recurring' | 'requests' | 'events' | 'types' | 'calendar'>('upcoming')
+  const [tab, setTab] = useState<'upcoming' | 'past' | 'recurring' | 'requests' | 'events' | 'types' | 'calendar'>('upcoming')
+
+  // Past sessions state
+  const todayMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const defaultPastFrom = (() => {
+    const d = new Date(todayMx + 'T00:00:00')
+    d.setDate(d.getDate() - 7)
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  })()
+  const [pastFrom, setPastFrom] = useState(defaultPastFrom)
+  const [pastTo, setPastTo] = useState(todayMx)
+  const [pastSessions, setPastSessions] = useState<ClassSession[] | null>(null)
+  const [loadingPast, setLoadingPast] = useState(false)
+
+  async function loadPastSessions(from: string, to: string) {
+    setLoadingPast(true)
+    const res = await fetch(`/api/admin/sessions?from=${from}&to=${to}`)
+    if (res.ok) {
+      setPastSessions(await res.json())
+    } else {
+      toast.error('Error al cargar clases anteriores')
+    }
+    setLoadingPast(false)
+  }
 
   // Helpers for dynamic class type display
   const getTypeLabel = (key: string) =>
@@ -104,6 +127,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     monday.setHours(0, 0, 0, 0)
     return monday
   })
+  const [showCalendarDatePicker, setShowCalendarDatePicker] = useState(false)
   const calendarDays = Array.from({ length: 7 }, (_, i) => addDays(calendarWeekStart, i))
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const getTypeColor = (key: string) => classTypes.find(c => c.key === key)?.color || '#868686'
@@ -422,6 +446,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
         {([
             { key: 'calendar', label: '📅 Calendario' },
             { key: 'upcoming', label: 'Próximas clases' },
+            { key: 'past', label: 'Clases anteriores' },
             { key: 'events', label: `✨ Eventos${events.length > 0 ? ` (${events.length})` : ''}` },
             { key: 'recurring', label: 'Plantillas semanales' },
             { key: 'requests', label: `Solicitudes${requestList.filter(r => !r.acknowledged).length > 0 ? ` (${requestList.filter(r => !r.acknowledged).length})` : ''}` },
@@ -503,6 +528,124 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {tab === 'past' && (
+        <div className="space-y-4">
+          {/* Date range filter */}
+          <div className="flex flex-wrap items-end gap-3 bg-white rounded-xl border border-border p-4">
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Desde</label>
+              <input
+                type="date"
+                value={pastFrom}
+                max={pastTo}
+                onChange={(e) => setPastFrom(e.target.value)}
+                className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">Hasta</label>
+              <input
+                type="date"
+                value={pastTo}
+                max={todayMx}
+                onChange={(e) => setPastTo(e.target.value)}
+                className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <Button
+              onClick={() => loadPastSessions(pastFrom, pastTo)}
+              disabled={loadingPast || !pastFrom || !pastTo}
+              className="bg-primary text-primary-foreground"
+            >
+              {loadingPast ? 'Cargando...' : 'Buscar'}
+            </Button>
+            <div className="flex gap-2 ml-auto">
+              {[
+                { label: 'Semana anterior', days: 7 },
+                { label: '30 días', days: 30 },
+                { label: '90 días', days: 90 },
+              ].map(({ label, days }) => (
+                <button
+                  key={days}
+                  onClick={() => {
+                    const d = new Date(todayMx + 'T00:00:00')
+                    d.setDate(d.getDate() - days)
+                    const from = d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+                    setPastFrom(from)
+                    setPastTo(todayMx)
+                    loadPastSessions(from, todayMx)
+                  }}
+                  className="px-3 py-2 text-xs rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results */}
+          {pastSessions === null ? (
+            <div className="bg-white rounded-xl border border-border flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+              <p className="text-sm">Selecciona un rango y presiona Buscar</p>
+            </div>
+          ) : loadingPast ? (
+            <div className="bg-white rounded-xl border border-border flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">Cargando...</p>
+            </div>
+          ) : pastSessions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-border flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">No hay clases en este rango de fechas</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(
+                pastSessions.reduce<Record<string, ClassSession[]>>((acc, s) => {
+                  if (!acc[s.date]) acc[s.date] = []
+                  acc[s.date].push(s)
+                  return acc
+                }, {})
+              )
+                .sort(([a], [b]) => b.localeCompare(a))
+                .map(([dateStr, daySessions]) => (
+                  <div key={dateStr}>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 capitalize">
+                      {format(parseISO(dateStr), "EEEE d 'de' MMMM", { locale: es })}
+                    </h3>
+                    <div className="bg-white rounded-xl border border-border overflow-hidden">
+                      {daySessions.map((session, idx) => {
+                        const label = { es: getTypeLabel(session.class_type) }
+                        const badgeStyle = getTypeBadgeStyle(session.class_type)
+                        return (
+                          <div key={session.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''} opacity-80`}>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={badgeStyle}>
+                              {label.es}
+                            </span>
+                            <span className="text-sm font-medium text-primary">{session.start_time.slice(0, 5)}</span>
+                            <span className="text-sm text-muted-foreground truncate">
+                              {(session as any).custom_title || (session as any).instructor?.name || ''}
+                            </span>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {session.spots_booked} / {session.capacity} lugares
+                            </span>
+                            {session.status === 'cancelled' && (
+                              <Badge variant="destructive" className="text-xs">Cancelada</Badge>
+                            )}
+                            <div className="ml-auto flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openAttendance(session)} title="Ver lista">
+                                <FontAwesomeIcon icon={faClipboardList} className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1348,6 +1491,22 @@ export default function AdminSchedule({ sessions: initial, instructors, template
             <span className="text-sm text-muted-foreground ml-1">
               {format(calendarWeekStart, "d MMM", { locale: es })} – {format(calendarDays[6], "d MMM yyyy", { locale: es })}
             </span>
+            {/* Date picker to jump to any week */}
+            <div className="ml-auto relative">
+              <input
+                type="date"
+                title="Ir a semana"
+                className="border border-border rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                onChange={(e) => {
+                  if (!e.target.value) return
+                  const picked = new Date(e.target.value + 'T00:00:00')
+                  const dow = picked.getDay()
+                  const monday = addDays(picked, dow === 0 ? -6 : 1 - dow)
+                  monday.setHours(0, 0, 0, 0)
+                  setCalendarWeekStart(monday)
+                }}
+              />
+            </div>
           </div>
 
           {/* Grid */}
