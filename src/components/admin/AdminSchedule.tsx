@@ -113,6 +113,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [blockedStations, setBlockedStations] = useState<number[]>([])
   const [addBookingStation, setAddBookingStation] = useState<number | null>(null)
   const [togglingStation, setTogglingStation] = useState<number | null>(null)
+  const [promotingBooking, setPromotingBooking] = useState<{ id: string; name: string } | null>(null)
+  const [promoteStation, setPromoteStation] = useState<number | null>(null)
+  const [savingPromotion, setSavingPromotion] = useState(false)
 
   const sessionsByDate = sessions.reduce<Record<string, ClassSession[]>>((acc, s) => {
     if (!acc[s.date]) acc[s.date] = []
@@ -407,6 +410,31 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       toast.error(data.error || 'Error al cancelar')
     }
     setCancellingBooking(null)
+  }
+
+  async function handlePromote(bookingId: string, station?: number) {
+    setSavingPromotion(true)
+    const res = await fetch(`/api/admin/bookings/${bookingId}/promote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ station: station || null }),
+    })
+    if (res.ok) {
+      setWaitlistBookings((prev) => prev.filter((b) => b.id !== bookingId))
+      setSessions((prev) => prev.map((s) => s.id === attendanceSession?.id ? { ...s, spots_booked: s.spots_booked + 1 } : s))
+      // Reload confirmed bookings to show the promoted person
+      if (attendanceSession) {
+        const bookingsRes = await fetch(`/api/admin/sessions/${attendanceSession.id}/bookings`)
+        if (bookingsRes.ok) setAttendanceBookings(await bookingsRes.json())
+      }
+      setPromotingBooking(null)
+      setPromoteStation(null)
+      toast.success('Persona promovida a confirmada')
+    } else {
+      const data = await res.json()
+      toast.error(data.error || 'Error al promover')
+    }
+    setSavingPromotion(false)
   }
 
   async function generateFromTemplates() {
@@ -1264,6 +1292,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   {waitlistBookings.map((b, i) => {
                     const name = b.profile?.full_name || b.guest_name || b.guest_email || 'Sin nombre'
                     const email = b.profile?.email || b.guest_email || ''
+                    const isReformer = attendanceSession && REFORMER_TYPES.includes(attendanceSession.class_type)
                     return (
                       <div key={b.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-secondary/40 border border-border">
                         <span className="text-xs font-bold text-muted-foreground w-4 shrink-0">{i + 1}</span>
@@ -1271,11 +1300,78 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           <p className="text-sm font-medium text-primary truncate">{name}</p>
                           {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
                         </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => {
+                              if (isReformer) {
+                                setPromotingBooking({ id: b.id, name })
+                                setPromoteStation(null)
+                              } else {
+                                handlePromote(b.id)
+                              }
+                            }}
+                            title="Mover a confirmadas"
+                            className="text-xs font-medium px-2 py-1 rounded-lg bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 transition-colors shrink-0"
+                          >
+                            Promover
+                          </button>
+                        )}
                       </div>
                     )
                   })}
                 </div>
                 )}
+              </div>
+            )}
+
+            {/* Station picker for waitlist promotion (Reformer only) */}
+            {promotingBooking && attendanceSession && (
+              <div className="px-5 pb-4 border-t border-border pt-4 shrink-0 bg-green-50/60">
+                <p className="text-xs font-semibold text-primary mb-2">
+                  Asignar estación a {promotingBooking.name}
+                </p>
+                <div className="space-y-1.5 mb-3">
+                  {STATION_ROWS.map((row, rowIdx) => (
+                    <div key={rowIdx} className="flex gap-1.5 justify-center">
+                      {row.map((num) => {
+                        const isTaken = attendanceBookings.some((b) => b.station === num)
+                        const isBlocked = blockedStations.includes(num)
+                        const isSelected = promoteStation === num
+                        const isDisabled = isTaken || isBlocked
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => setPromoteStation(isSelected ? null : num)}
+                            className={`w-10 h-10 rounded-full text-sm font-bold border-2 transition-all ${
+                              isDisabled
+                                ? 'bg-muted text-muted-foreground border-border opacity-40 cursor-not-allowed'
+                                : isSelected
+                                  ? 'bg-green-600 text-white border-green-600 scale-110 shadow-md'
+                                  : 'bg-[#F4EF71] text-primary border-[#F4EF71] hover:border-green-400 hover:scale-105'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPromotingBooking(null); setPromoteStation(null) }}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                    disabled={!promoteStation || savingPromotion}
+                    onClick={() => handlePromote(promotingBooking.id, promoteStation!)}
+                  >
+                    {savingPromotion ? 'Guardando...' : 'Confirmar'}
+                  </Button>
+                </div>
               </div>
             )}
 
