@@ -10,6 +10,45 @@ async function checkAdmin(supabase: any) {
   return profile?.is_admin === true
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createClient()
+  if (!(await checkAdmin(supabase))) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const adminClient = createAdminClient()
+  const [sessionRes, bookingsRes] = await Promise.all([
+    adminClient.from('class_sessions').select('class_type').eq('id', id).single(),
+    adminClient
+      .from('bookings')
+      .select('user_id, user_package_id, guest_email, guest_name, payment_status, profile:profiles(full_name, phone)')
+      .eq('session_id', id)
+      .eq('status', 'cancelled'),
+  ])
+
+  if (!sessionRes.data) return NextResponse.json({ error: 'Sesión no encontrada' }, { status: 404 })
+
+  const registrants = (bookingsRes.data || []).map((booking: any) => {
+    const isGuest = !booking.user_id
+    const isPaid = booking.payment_status === 'paid'
+    let refundType: 'package' | 'credit' | 'none' | 'guest' = 'none'
+    if (isGuest) refundType = 'guest'
+    else if (isPaid) refundType = booking.user_package_id ? 'package' : 'credit'
+    return {
+      name: booking.profile?.full_name || booking.guest_name || booking.guest_email || 'Sin nombre',
+      phone: booking.profile?.phone || null,
+      isGuest,
+      refundType,
+    }
+  })
+
+  return NextResponse.json({ registrants })
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

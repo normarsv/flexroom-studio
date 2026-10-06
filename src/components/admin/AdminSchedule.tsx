@@ -58,12 +58,12 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [templateForm, setTemplateForm] = useState({ day_of_week: 1, start_time: '08:00', duration_minutes: 50, class_type: 'funcional' as ClassType, instructor_id: '', capacity: 5 })
   const [savingTemplate, setSavingTemplate] = useState(false)
 
-  // Cancel result modal state
-  const [cancelResult, setCancelResult] = useState<{
-    session: ClassSession
-    registrants: { name: string; phone: string | null; isGuest: boolean; refundType: 'package' | 'credit' | 'none' | 'guest' }[]
-  } | null>(null)
+  type CancelRegistrant = { name: string; phone: string | null; isGuest: boolean; refundType: 'package' | 'credit' | 'none' | 'guest' }
+  // Cancel result modal state — cached per session id so it survives close
+  const [cancelResult, setCancelResult] = useState<{ session: ClassSession; registrants: CancelRegistrant[] } | null>(null)
+  const [cancelCache, setCancelCache] = useState<Record<string, CancelRegistrant[]>>({})
   const [whatsappMsg, setWhatsappMsg] = useState('')
+  const [loadingCancelSummary, setLoadingCancelSummary] = useState(false)
 
   // Attendance state
   const [attendanceSession, setAttendanceSession] = useState<ClassSession | null>(null)
@@ -117,6 +117,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
       setEvents((prev) => prev.map((s) => s.id === session.id ? { ...s, status: 'cancelled' } : s))
       toast.success('Clase cancelada')
       if (data.registrants?.length > 0) {
+        setCancelCache(prev => ({ ...prev, [session.id]: data.registrants }))
         const dateLabel = `${getTypeLabel(session.class_type)} del ${format(parseISO(session.date), "d 'de' MMMM", { locale: es })} a las ${session.start_time.slice(0, 5)}`
         setWhatsappMsg(`Hola, te avisamos que la clase de ${dateLabel} ha sido cancelada. Disculpa los inconvenientes.`)
         setCancelResult({ session, registrants: data.registrants })
@@ -144,6 +145,26 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     const intl = digits.startsWith('52') ? digits : `52${digits}`
     const msg = whatsappMsg.replace('[nombre]', name)
     return `https://wa.me/${intl}?text=${encodeURIComponent(msg)}`
+  }
+
+  async function openCancelModal(session: ClassSession) {
+    const dateLabel = `${getTypeLabel(session.class_type)} del ${format(parseISO(session.date), "d 'de' MMMM", { locale: es })} a las ${session.start_time.slice(0, 5)}`
+    setWhatsappMsg(`Hola, te avisamos que la clase de ${dateLabel} ha sido cancelada. Disculpa los inconvenientes.`)
+    // Use cached data if available, otherwise fetch
+    if (cancelCache[session.id]) {
+      setCancelResult({ session, registrants: cancelCache[session.id] })
+      return
+    }
+    setLoadingCancelSummary(true)
+    const res = await fetch(`/api/admin/sessions/${session.id}/cancel`)
+    if (res.ok) {
+      const data = await res.json()
+      setCancelCache(prev => ({ ...prev, [session.id]: data.registrants }))
+      setCancelResult({ session, registrants: data.registrants })
+    } else {
+      toast.error('Error al cargar registros')
+    }
+    setLoadingCancelSummary(false)
   }
 
   async function handleAcknowledge(id: string) {
@@ -466,9 +487,14 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
                           </Button>
                         ) : (
-                          <Button variant="ghost" size="sm" onClick={() => handleUncancel(session)} className="text-green-600 hover:text-green-700" title="Reactivar clase">
-                            <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
-                          </Button>
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => openCancelModal(session)} disabled={loadingCancelSummary} title="Ver registrados / WhatsApp" className="text-green-600 hover:text-green-700">
+                              <FontAwesomeIcon icon={faWhatsapp} className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleUncancel(session)} className="text-muted-foreground hover:text-primary" title="Reactivar clase">
+                              <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -558,15 +584,14 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
                           </Button>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUncancel(event)}
-                            className="text-green-600 hover:text-green-700"
-                            title="Reactivar evento"
-                          >
-                            <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
-                          </Button>
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => openCancelModal(event)} disabled={loadingCancelSummary} title="Ver registrados / WhatsApp" className="text-green-600 hover:text-green-700">
+                              <FontAwesomeIcon icon={faWhatsapp} className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleUncancel(event)} className="text-muted-foreground hover:text-primary" title="Reactivar evento">
+                              <FontAwesomeIcon icon={faRotateRight} className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
                         )}
                         <Button
                           variant="ghost"
