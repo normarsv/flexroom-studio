@@ -22,7 +22,7 @@ export async function GET(
   const adminClient = createAdminClient()
   const { data, error } = await adminClient
     .from('bookings')
-    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
+    .select('id, user_id, user_package_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
     .eq('session_id', id)
     .eq('status', 'confirmed')
     .order('id')
@@ -94,7 +94,7 @@ export async function POST(
   const { data: booking, error: insertError } = await adminClient
     .from('bookings')
     .insert(row)
-    .select('id, user_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
+    .select('id, user_id, user_package_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')
     .single()
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })

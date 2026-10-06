@@ -1115,12 +1115,13 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium text-primary truncate">{name}</p>
-                          {booking.payment_status === 'pending' && (
+                          {booking.payment_status === 'pending' ? (
                             <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 border border-orange-200 shrink-0">Pago pendiente</span>
-                          )}
-                          {booking.payment_status === 'paid' && (
-                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-600 border border-green-200 shrink-0">Pagado</span>
-                          )}
+                          ) : booking.user_package_id ? (
+                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shrink-0">Membresía</span>
+                          ) : booking.user_id ? (
+                            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 shrink-0">Clase individual</span>
+                          ) : null}
                         </div>
                         {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
                       </div>
