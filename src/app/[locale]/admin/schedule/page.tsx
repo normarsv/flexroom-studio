@@ -9,22 +9,22 @@ export default async function AdminSchedulePage({
   const { locale } = await params
   const supabase = await createClient()
 
-  const today = new Date()
-  const limit = new Date()
-  limit.setDate(today.getDate() + 30)
-
   const { data: { user } } = await supabase.auth.getUser()
   const profileRes = user ? await supabase.from('profiles').select('is_admin').eq('id', user.id).single() : null
   const isAdmin = profileRes?.data?.is_admin === true
 
-  const todayStr = today.toISOString().split('T')[0]
+  // Use Mexico City time so the date doesn't flip to tomorrow after 6 PM local time
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const limitDate = new Date(todayStr + 'T00:00:00')
+  limitDate.setDate(limitDate.getDate() + 30)
+  const limitStr = limitDate.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
 
   const [sessionsRes, instructorsRes, templatesRes, requestsRes, eventsRes, classTypesRes] = await Promise.all([
     supabase
       .from('class_sessions')
       .select('*, instructor:instructors(*)')
       .gte('date', todayStr)
-      .lte('date', limit.toISOString().split('T')[0])
+      .lte('date', limitStr)
       .eq('is_special', false)
       .order('date')
       .order('start_time'),
