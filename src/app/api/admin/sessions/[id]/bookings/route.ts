@@ -49,7 +49,7 @@ export async function POST(
   const role = await getRole(supabase)
   if (!role || !role.isAdmin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { user_id, guest_name, guest_email, payment_status, station } = await request.json()
+  const { user_id, guest_name, guest_email, payment_status, station, user_package_id } = await request.json()
   if (!payment_status || !['paid', 'pending'].includes(payment_status)) {
     return NextResponse.json({ error: 'Estado de pago requerido' }, { status: 400 })
   }
@@ -58,6 +58,29 @@ export async function POST(
   }
 
   const adminClient = createAdminClient()
+
+  // Validate package if provided
+  let validatedPackage: { id: string; sessions_remaining: number | null } | null = null
+  if (user_package_id) {
+    if (!user_id) return NextResponse.json({ error: 'Se requiere un cliente para usar membresía' }, { status: 400 })
+    const { data: session } = await adminClient.from('class_sessions').select('class_type').eq('id', id).single()
+    const { data: pkg } = await adminClient
+      .from('user_packages')
+      .select('id, sessions_remaining, expires_at, package:packages(allowed_class_types)')
+      .eq('id', user_package_id)
+      .eq('user_id', user_id)
+      .single()
+    if (!pkg) return NextResponse.json({ error: 'Membresía no válida para este cliente' }, { status: 400 })
+    if (new Date((pkg as any).expires_at) < new Date()) return NextResponse.json({ error: 'La membresía está vencida' }, { status: 400 })
+    if ((pkg as any).sessions_remaining !== null && (pkg as any).sessions_remaining <= 0) {
+      return NextResponse.json({ error: 'La membresía no tiene sesiones disponibles' }, { status: 400 })
+    }
+    const allowed: string[] | null = (pkg as any).package?.allowed_class_types
+    if (session && allowed && allowed.length > 0 && !allowed.includes(session.class_type)) {
+      return NextResponse.json({ error: 'Esta membresía no aplica para este tipo de clase' }, { status: 400 })
+    }
+    validatedPackage = { id: pkg.id, sessions_remaining: (pkg as any).sessions_remaining }
+  }
 
   // Check session status and capacity from actual booking count
   const [sessionRes, countRes] = await Promise.all([
@@ -90,6 +113,7 @@ export async function POST(
   if (guest_name) row.guest_name = guest_name
   if (guest_email) row.guest_email = guest_email
   if (station) row.station = station
+  if (validatedPackage) row.user_package_id = validatedPackage.id
 
   const { data: booking, error: insertError } = await adminClient
     .from('bookings')
@@ -98,6 +122,14 @@ export async function POST(
     .single()
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+
+  // Deduct one session from the package (skip if unlimited)
+  if (validatedPackage && validatedPackage.sessions_remaining !== null) {
+    await adminClient
+      .from('user_packages')
+      .update({ sessions_remaining: validatedPackage.sessions_remaining - 1 })
+      .eq('id', validatedPackage.id)
+  }
 
   // Keep spots_booked in sync with actual confirmed count
   await adminClient

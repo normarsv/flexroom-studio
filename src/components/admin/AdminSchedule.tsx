@@ -106,6 +106,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid')
+  const [paymentMethod, setPaymentMethod] = useState<'paid' | 'pending' | 'package'>('paid')
+  const [clientValidPackages, setClientValidPackages] = useState<{ id: string; sessions_remaining: number | null; package: { name_es: string } }[]>([])
+  const [loadingClientPackages, setLoadingClientPackages] = useState(false)
   const [savingBooking, setSavingBooking] = useState(false)
   const [cancellingBooking, setCancellingBooking] = useState<string | null>(null)
 
@@ -348,6 +351,8 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setGuestName('')
     setGuestEmail('')
     setPaymentStatus('paid')
+    setPaymentMethod('paid')
+    setClientValidPackages([])
     if (allClients.length === 0) {
       setLoadingClients(true)
       const res = await fetch('/api/admin/clients')
@@ -356,15 +361,34 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     }
   }
 
+  async function handleClientSelect(clientId: string) {
+    setSelectedClientId(clientId)
+    setClientValidPackages([])
+    setPaymentMethod('paid')
+    if (!clientId || !attendanceSession) return
+    setLoadingClientPackages(true)
+    const res = await fetch(`/api/admin/clients/${clientId}/valid-packages?class_type=${attendanceSession.class_type}`)
+    if (res.ok) {
+      const pkgs = await res.json()
+      setClientValidPackages(pkgs)
+      if (pkgs.length > 0) setPaymentMethod('package')
+    }
+    setLoadingClientPackages(false)
+  }
+
   async function handleAddBooking() {
     if (!attendanceSession) return
     if (addBookingType === 'client' && !selectedClientId) { toast.error('Selecciona un cliente'); return }
     if (addBookingType === 'guest' && !guestName.trim()) { toast.error('El nombre es requerido'); return }
     if (REFORMER_TYPES.includes(attendanceSession.class_type) && !addBookingStation) { toast.error('Selecciona una estación'); return }
     setSavingBooking(true)
-    const body: any = { payment_status: paymentStatus }
+    const resolvedPaymentStatus = paymentMethod === 'package' ? 'paid' : paymentMethod
+    const body: any = { payment_status: resolvedPaymentStatus }
     if (addBookingType === 'client') {
       body.user_id = selectedClientId
+      if (paymentMethod === 'package' && clientValidPackages.length > 0) {
+        body.user_package_id = clientValidPackages[0].id
+      }
     } else {
       body.guest_name = guestName.trim()
       if (guestEmail.trim()) body.guest_email = guestEmail.trim()
@@ -1230,7 +1254,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                       ) : (
                         <select
                           value={selectedClientId}
-                          onChange={(e) => setSelectedClientId(e.target.value)}
+                          onChange={(e) => handleClientSelect(e.target.value)}
                           className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
                           <option value="">Seleccionar cliente...</option>
@@ -1267,20 +1291,46 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   {/* Payment status */}
                   <div>
                     <label className="text-xs font-medium text-primary block mb-1">Pago</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setPaymentStatus('paid')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white text-muted-foreground border-border hover:border-green-300'}`}
-                      >
-                        Ya pagó
-                      </button>
-                      <button
-                        onClick={() => setPaymentStatus('pending')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentStatus === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white text-muted-foreground border-border hover:border-orange-300'}`}
-                      >
-                        Pagará antes de clase
-                      </button>
-                    </div>
+                    {loadingClientPackages ? (
+                      <p className="text-xs text-muted-foreground">Verificando membresías...</p>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => setPaymentMethod('paid')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentMethod === 'paid' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white text-muted-foreground border-border hover:border-green-300'}`}
+                        >
+                          Ya pagó
+                        </button>
+                        <button
+                          onClick={() => setPaymentMethod('pending')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentMethod === 'pending' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white text-muted-foreground border-border hover:border-orange-300'}`}
+                        >
+                          Pagará antes de clase
+                        </button>
+                        {addBookingType === 'client' && selectedClientId && (
+                          clientValidPackages.length > 0 ? (
+                            <button
+                              onClick={() => setPaymentMethod('package')}
+                              className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${paymentMethod === 'package' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white text-muted-foreground border-border hover:border-blue-300'}`}
+                            >
+                              Membresía
+                            </button>
+                          ) : (
+                            <div className="w-full mt-1 text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
+                              Sin membresía válida para esta clase
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {paymentMethod === 'package' && clientValidPackages.length > 0 && (
+                      <p className="text-xs text-blue-700 mt-1.5">
+                        {clientValidPackages[0].package.name_es}
+                        {clientValidPackages[0].sessions_remaining !== null
+                          ? ` · ${clientValidPackages[0].sessions_remaining} sesión${clientValidPackages[0].sessions_remaining === 1 ? '' : 'es'} disponible${clientValidPackages[0].sessions_remaining === 1 ? '' : 's'}`
+                          : ' · Ilimitado'}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-2 pt-1">
