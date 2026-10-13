@@ -46,7 +46,7 @@ export default async function AdminClientsPage() {
     fetchAll(
       supabase,
       'bookings',
-      'user_id, created_at, status, attended, price_paid, session:class_sessions(date, class_type, start_time)',
+      'user_id, created_at, status, attended, price_paid, cancelled_at, user_package_id, session:class_sessions(date, class_type, start_time)',
       (q: any) => q.not('user_id', 'is', null)
     ),
   ])

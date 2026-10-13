@@ -25,6 +25,8 @@ interface BookingEntry {
   status: string
   attended: boolean | null
   price_paid: number | null
+  cancelled_at: string | null
+  user_package_id: string | null
   session: { date: string; class_type: string; start_time: string } | null
 }
 
@@ -1062,60 +1064,107 @@ export default function AdminClientsTable({
 
               {/* ── RESERVAS ── */}
               {manageTab === 'reservas' && (() => {
-                const sorted = [...managingClient.bookings].sort((a, b) => b.created_at.localeCompare(a.created_at))
-                return (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-primary">Reservas totales</p>
-                      <span className="text-xs font-semibold bg-secondary text-primary px-2.5 py-0.5 rounded-full">
-                        {managingClient.bookings.length}
-                      </span>
-                    </div>
-                    {sorted.length === 0 ? (
-                      <p className="text-sm text-muted-foreground italic">Sin reservas</p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {sorted.map((booking, idx) => {
-                          const session = booking.session
-                          const label = session ? CLASS_TYPE_LABELS[session.class_type as ClassType]?.es : null
-                          return (
-                            <div
-                              key={idx}
-                              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border ${
-                                booking.status === 'cancelled'
-                                  ? 'border-border bg-secondary/30 opacity-60'
-                                  : 'border-border bg-white'
-                              }`}
-                            >
-                              <div>
-                                {session ? (
-                                  <>
-                                    <span className="font-medium text-primary">{label || session.class_type}</span>
-                                    <span className="text-muted-foreground ml-2 text-xs">
-                                      {new Date(session.date + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                                      {' · '}{session.start_time.slice(0, 5)}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">Clase eliminada</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                {booking.attended === true && (
-                                  <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Asistió</span>
-                                )}
-                                {booking.attended === false && (
-                                  <span className="text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">No asistió</span>
-                                )}
-                                {booking.status === 'cancelled' && (
-                                  <Badge variant="destructive" className="text-xs">Cancelada</Badge>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
+                const today = new Date().toISOString().slice(0, 10)
+                const fmtDate = (iso: string) =>
+                  new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+                const fmtDateTime = (iso: string) =>
+                  new Date(iso).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+                const upcoming = managingClient.bookings
+                  .filter((b) => b.status !== 'cancelled' && b.session && b.session.date >= today)
+                  .sort((a, b) => (a.session!.date + a.session!.start_time) > (b.session!.date + b.session!.start_time) ? 1 : -1)
+
+                const past = managingClient.bookings
+                  .filter((b) => b.status !== 'cancelled' && b.session && b.session.date < today)
+                  .sort((a, b) => (a.session!.date + a.session!.start_time) > (b.session!.date + b.session!.start_time) ? -1 : 1)
+
+                const cancelled = managingClient.bookings
+                  .filter((b) => b.status === 'cancelled')
+                  .sort((a, b) => (b.cancelled_at || b.created_at).localeCompare(a.cancelled_at || a.created_at))
+
+                const BookingRow = ({ booking, showCancelledAt }: { booking: BookingEntry; showCancelledAt?: boolean }) => {
+                  const session = booking.session
+                  const label = session ? (CLASS_TYPE_LABELS[session.class_type as ClassType]?.es || session.class_type) : null
+                  return (
+                    <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm border ${showCancelledAt ? 'border-red-100 bg-red-50/40' : 'border-border bg-white'}`}>
+                      <div className="min-w-0 flex-1">
+                        {session ? (
+                          <>
+                            <span className="font-medium text-primary">{label}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">
+                              {fmtDate(session.date)} · {session.start_time.slice(0, 5)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-xs italic">Clase eliminada</span>
+                        )}
+                        {showCancelledAt && booking.cancelled_at && (
+                          <p className="text-xs text-muted-foreground mt-0.5">Canceló: {fmtDateTime(booking.cancelled_at)}</p>
+                        )}
                       </div>
-                    )}
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {booking.status === 'waitlist' && (
+                          <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full">En espera</span>
+                        )}
+                        {booking.attended === true && (
+                          <span className="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded">Asistió</span>
+                        )}
+                        {booking.attended === false && (
+                          <span className="text-xs font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">No asistió</span>
+                        )}
+                        {booking.user_package_id ? (
+                          <span className="text-xs text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded-full">Membresía</span>
+                        ) : !showCancelledAt && booking.status !== 'waitlist' ? (
+                          <span className="text-xs text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded-full">Individual</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="space-y-5">
+                    {/* Upcoming */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Próximas ({upcoming.length})
+                      </p>
+                      {upcoming.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">Sin reservas próximas</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {upcoming.map((b, i) => <BookingRow key={i} booking={b} />)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Past */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Pasadas ({past.length})
+                      </p>
+                      {past.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">Sin clases pasadas</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {past.map((b, i) => <BookingRow key={i} booking={b} />)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Cancelled */}
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Canceladas ({cancelled.length})
+                      </p>
+                      {cancelled.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">Sin cancelaciones</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {cancelled.map((b, i) => <BookingRow key={i} booking={b} showCancelledAt />)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })()}

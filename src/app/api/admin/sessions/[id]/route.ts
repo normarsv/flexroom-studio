@@ -63,7 +63,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   const supabase = await createClient()
-  if (!(await checkAdmin(supabase))) {
+  const role = await getRole(supabase)
+  if (!role?.isAdmin) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
