@@ -11,7 +11,7 @@ async function getRole(supabase: any) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -19,7 +19,20 @@ export async function GET(
   const role = await getRole(supabase)
   if (!role || (!role.isAdmin && !role.isCoach)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
+  const statusFilter = request.nextUrl.searchParams.get('status') || 'confirmed'
   const adminClient = createAdminClient()
+
+  if (statusFilter === 'cancelled') {
+    const { data, error } = await adminClient
+      .from('bookings')
+      .select('id, user_id, guest_name, guest_email, cancelled_at, payment_status, user_package_id, profile:profiles(full_name, email, phone)')
+      .eq('session_id', id)
+      .eq('status', 'cancelled')
+      .order('cancelled_at', { ascending: false })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data ?? [])
+  }
+
   const { data, error } = await adminClient
     .from('bookings')
     .select('id, user_id, user_package_id, guest_name, guest_email, status, attended, payment_status, station, profile:profiles(full_name, email)')

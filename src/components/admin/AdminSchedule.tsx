@@ -94,6 +94,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
   const [attendanceSession, setAttendanceSession] = useState<ClassSession | null>(null)
   const [attendanceBookings, setAttendanceBookings] = useState<any[]>([])
   const [waitlistBookings, setWaitlistBookings] = useState<any[]>([])
+  const [cancelledBookings, setCancelledBookings] = useState<any[]>([])
   const [loadingAttendance, setLoadingAttendance] = useState(false)
   const [savingAttendance, setSavingAttendance] = useState<string | null>(null)
 
@@ -288,9 +289,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     setBlockedStations(session.blocked_stations || [])
     setLoadingAttendance(true)
     setWaitlistBookings([])
-    const [bookingsRes, waitlistRes] = await Promise.all([
+    setCancelledBookings([])
+    const [bookingsRes, waitlistRes, cancelledRes] = await Promise.all([
       fetch(`/api/admin/sessions/${session.id}/bookings`),
       fetch(`/api/admin/sessions/${session.id}/waitlist`),
+      fetch(`/api/admin/sessions/${session.id}/bookings?status=cancelled`),
     ])
     if (bookingsRes.ok) {
       const bookings = await bookingsRes.json()
@@ -302,9 +305,8 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     } else {
       toast.error('Error al cargar la lista')
     }
-    if (waitlistRes.ok) {
-      setWaitlistBookings(await waitlistRes.json())
-    }
+    if (waitlistRes.ok) setWaitlistBookings(await waitlistRes.json())
+    if (cancelledRes.ok) setCancelledBookings(await cancelledRes.json())
     setLoadingAttendance(false)
   }
 
@@ -1057,7 +1059,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                   {getTypeLabel(attendanceSession.class_type)} · {attendanceSession.start_time.slice(0, 5)} · {format(parseISO(attendanceSession.date), "d 'de' MMMM", { locale: es })}
                 </p>
               </div>
-              <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]) }} className="text-muted-foreground hover:text-primary p-1">
+              <button onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]); setCancelledBookings([]) }} className="text-muted-foreground hover:text-primary p-1">
                 <FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
               </button>
             </div>
@@ -1421,6 +1423,43 @@ export default function AdminSchedule({ sessions: initial, instructors, template
               </div>
             )}
 
+            {/* Cancellations section — admin only */}
+            {isAdmin && !loadingAttendance && cancelledBookings.length > 0 && (
+              <div className="px-5 pb-4 border-t border-border pt-4 shrink-0">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Cancelaciones ({cancelledBookings.length})
+                </p>
+                <div className="space-y-1.5">
+                  {cancelledBookings.map((b) => {
+                    const name = b.profile?.full_name || b.guest_name || b.guest_email || 'Sin nombre'
+                    const email = b.profile?.email || b.guest_email || ''
+                    const cancelledAt = b.cancelled_at ? new Date(b.cancelled_at) : null
+                    const cancelledStr = cancelledAt
+                      ? cancelledAt.toLocaleString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                      : ''
+                    return (
+                      <div key={b.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-red-50/60 border border-red-100">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-primary truncate">{name}</p>
+                            {b.user_package_id ? (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 shrink-0">Membresía</span>
+                            ) : b.user_id ? (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 shrink-0">Individual</span>
+                            ) : (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground border border-border shrink-0">Invitada</span>
+                            )}
+                          </div>
+                          {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
+                          {cancelledStr && <p className="text-xs text-muted-foreground">{cancelledStr}</p>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Station picker for waitlist promotion (Reformer only) */}
             {promotingBooking && attendanceSession && (
               <div className="px-5 pb-4 border-t border-border pt-4 shrink-0 bg-green-50/60">
@@ -1485,7 +1524,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                     Agregar
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]) }}>Cerrar</Button>
+                <Button size="sm" variant="outline" onClick={() => { setAttendanceSession(null); setShowAddBooking(false); setWaitlistBookings([]); setCancelledBookings([]) }}>Cerrar</Button>
               </div>
             </div>
           </div>
