@@ -422,7 +422,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     {session.instructor && (
                       <div className="flex items-center gap-1.5 mt-1">
                         {session.instructor.photo_url && (
-                          <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-5 h-5 rounded-full object-cover shrink-0" />
+                          <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
                         )}
                         <p className="text-xs text-muted-foreground">{session.instructor.name}</p>
                       </div>
@@ -507,7 +507,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                   {session.instructor && (
                     <span className="flex items-center gap-1.5">
                       {session.instructor.photo_url && (
-                        <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-5 h-5 rounded-full object-cover shrink-0" />
+                        <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
                       )}
                       <span className="text-sm text-muted-foreground">{session.instructor.name}</span>
                     </span>
