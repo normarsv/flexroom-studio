@@ -16,9 +16,10 @@ interface Props {
   onClose: () => void
   onSaved: () => void
   defaultSpecial?: boolean
+  isCoach?: boolean
 }
 
-export default function SessionFormModal({ session, instructors, classTypes, locale, onClose, onSaved, defaultSpecial = false }: Props) {
+export default function SessionFormModal({ session, instructors, classTypes, locale, onClose, onSaved, defaultSpecial = false, isCoach = false }: Props) {
   const isNew = !session
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
@@ -68,6 +69,34 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Coach-only view: just instructor selector */}
+          {isCoach && !isNew && (
+            <>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Instructora</label>
+                <select
+                  value={form.instructor_id}
+                  onChange={(e) => setForm({ ...form, instructor_id: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {instructors.map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+                <Button type="submit" disabled={loading} className="flex-1 bg-primary text-primary-foreground">
+                  {loading ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* Admin-only view: full form */}
+          {(!isCoach || isNew) && <>
 
           {/* Special event toggle */}
           <button
@@ -215,6 +244,7 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
               {loading ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
+          </>}
         </form>
       </div>
     </div>

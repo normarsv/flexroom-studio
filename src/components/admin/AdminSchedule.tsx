@@ -1860,6 +1860,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
           classTypes={classTypes}
           locale={locale}
           defaultSpecial={tab === 'events'}
+          isCoach={!isAdmin}
           onClose={() => setEditingSession(null)}
           onSaved={() => { setEditingSession(null); window.location.reload() }}
         />
