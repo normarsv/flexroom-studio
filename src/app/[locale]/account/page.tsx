@@ -55,6 +55,8 @@ export default async function AccountPage({
     return aDate.localeCompare(bDate)
   })
 
+  const hasPasswordProvider = user!.app_metadata?.providers?.includes('email') ?? false
+
   return (
     <AccountDashboard
       bookings={bookings}
@@ -63,6 +65,7 @@ export default async function AccountPage({
       credits={creditsRes.data || []}
       cancellationHoursLimit={settingsRes.data?.cancellation_hours_limit ?? 12}
       locale={locale}
+      hasPasswordProvider={hasPasswordProvider}
     />
   )
 }

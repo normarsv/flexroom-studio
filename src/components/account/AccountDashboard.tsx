@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 import { format, parseISO, isFuture } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
@@ -19,9 +20,10 @@ interface Props {
   credits: { id: string; class_type: string }[]
   cancellationHoursLimit: number
   locale: string
+  hasPasswordProvider: boolean
 }
 
-export default function AccountDashboard({ bookings, userPackages, profile, credits, cancellationHoursLimit, locale }: Props) {
+export default function AccountDashboard({ bookings, userPackages, profile, credits, cancellationHoursLimit, locale, hasPasswordProvider }: Props) {
   const t = useTranslations('account')
   const tCommon = useTranslations('common')
   const dateLocale = locale === 'es' ? es : enUS
@@ -39,6 +41,10 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
   const [countryCode, setCountryCode] = useState(parsed.code)
   const [phone, setPhone] = useState(parsed.local)
   const [savingDetails, setSavingDetails] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
   const [localBookings, setLocalBookings] = useState(bookings)
   const [localCredits, setLocalCredits] = useState(credits)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
@@ -101,6 +107,42 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
       else toast.error(locale === 'es' ? 'Error al guardar' : 'Error saving')
     } finally {
       setSavingDetails(false)
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      toast.error(locale === 'es' ? 'Las contraseñas no coinciden' : 'Passwords do not match')
+      return
+    }
+    if (newPassword.length < 8) {
+      toast.error(locale === 'es' ? 'La contraseña debe tener al menos 8 caracteres' : 'Password must be at least 8 characters')
+      return
+    }
+    setSavingPassword(true)
+    try {
+      const supabase = createClient()
+      // Verify current password first
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile!.email,
+        password: currentPassword,
+      })
+      if (signInError) {
+        toast.error(locale === 'es' ? 'Contraseña actual incorrecta' : 'Current password is incorrect')
+        return
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) {
+        toast.error(updateError.message)
+        return
+      }
+      toast.success(locale === 'es' ? 'Contraseña actualizada' : 'Password updated')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -333,6 +375,70 @@ export default function AccountDashboard({ bookings, userPackages, profile, cred
                 : (locale === 'es' ? 'Guardar' : 'Save')}
             </Button>
           </form>
+
+          {hasPasswordProvider && (
+            <>
+              <div className="border-t border-border mt-6 pt-6">
+                <h3 className="font-semibold text-primary mb-1">
+                  {locale === 'es' ? 'Cambiar contraseña' : 'Change password'}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-5">
+                  {locale === 'es'
+                    ? 'Elige una contraseña segura de al menos 8 caracteres.'
+                    : 'Choose a strong password with at least 8 characters.'}
+                </p>
+                <form onSubmit={handleChangePassword} className="space-y-4 max-w-sm">
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">
+                      {locale === 'es' ? 'Contraseña actual' : 'Current password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">
+                      {locale === 'es' ? 'Nueva contraseña' : 'New password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">
+                      {locale === 'es' ? 'Confirmar nueva contraseña' : 'Confirm new password'}
+                    </label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={savingPassword}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {savingPassword
+                      ? (locale === 'es' ? 'Guardando...' : 'Saving...')
+                      : (locale === 'es' ? 'Actualizar contraseña' : 'Update password')}
+                  </Button>
+                </form>
+              </div>
+            </>
+          )}
         </div>
       )}
 
