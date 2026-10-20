@@ -223,19 +223,21 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
             </select>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-primary block mb-1">
-              Título personalizado <span className="text-muted-foreground font-normal">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={form.custom_title}
-              onChange={(e) => setForm({ ...form, custom_title: e.target.value })}
-              placeholder={classTypes.find(ct => ct.key === form.class_type)?.name_es || CLASS_TYPE_LABELS[form.class_type]?.es || form.class_type}
-              className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            <p className="text-xs text-muted-foreground mt-1">Si se deja vacío, se muestra el nombre del tipo de clase.</p>
-          </div>
+          {!form.is_special && (
+            <div>
+              <label className="text-xs font-medium text-primary block mb-1">
+                Título personalizado <span className="text-muted-foreground font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={form.custom_title}
+                onChange={(e) => setForm({ ...form, custom_title: e.target.value })}
+                placeholder={classTypes.find(ct => ct.key === form.class_type)?.name_es || CLASS_TYPE_LABELS[form.class_type]?.es || form.class_type}
+                className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Si se deja vacío, se muestra el nombre del tipo de clase.</p>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-primary block mb-1">Instructora</label>
