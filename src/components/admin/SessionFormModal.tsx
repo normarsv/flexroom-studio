@@ -34,6 +34,8 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
     event_title: session?.event_title || '',
     event_description: session?.event_description || '',
     event_type_label: session?.event_type_label || '',
+    event_price_mxn: session?.event_price_mxn ?? '',
+    is_hidden: session?.is_hidden || false,
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,7 +46,10 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
       const res = await fetch(url, {
         method: isNew ? 'POST' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          event_price_mxn: form.is_special && form.event_price_mxn !== '' ? Number(form.event_price_mxn) : null,
+        }),
       })
       if (res.ok) {
         toast.success(isNew ? 'Clase creada' : 'Clase actualizada')
@@ -146,6 +151,36 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
                   className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white resize-none"
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-primary block mb-1">Precio (MXN) <span className="text-destructive">*</span></label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <input
+                    type="number"
+                    required={form.is_special}
+                    min={0}
+                    value={form.event_price_mxn}
+                    onChange={(e) => setForm((f) => ({ ...f, event_price_mxn: e.target.value }))}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Reemplaza el precio del tipo de clase. Se pueden aplicar cupones.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, is_hidden: !f.is_hidden }))}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors text-sm font-medium ${
+                  form.is_hidden
+                    ? 'border-slate-400 bg-slate-100 text-primary'
+                    : 'border-border bg-secondary/40 text-muted-foreground hover:border-primary/30'
+                }`}
+              >
+                <span>🔒 Ocultar del sitio público</span>
+                <span className={`w-9 h-5 rounded-full transition-colors relative ${form.is_hidden ? 'bg-primary' : 'bg-border'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${form.is_hidden ? 'left-4' : 'left-0.5'}`} />
+                </span>
+              </button>
             </div>
           )}
 

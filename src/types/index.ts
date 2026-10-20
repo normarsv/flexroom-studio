@@ -56,6 +56,8 @@ export interface ClassSession {
   event_title: string | null
   event_description: string | null
   event_type_label: string | null
+  event_price_mxn: number | null
+  is_hidden: boolean
   created_at: string
   blocked_stations: number[]
   instructor_paid_at: string | null

@@ -29,6 +29,7 @@ export default async function ClassesPage({
     .gte('date', todayMx)
     .lte('date', limitMx)
     .eq('status', 'scheduled')
+    .eq('is_hidden', false)
     .order('date', { ascending: true })
     .order('start_time', { ascending: true })
 

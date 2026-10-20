@@ -36,6 +36,7 @@ interface UserPackageEntry {
   sessions_remaining: number | null
   purchased_at: string
   stripe_payment_intent_id: string | null
+  payment_method: string | null
   package: { name_es: string; price_mxn: number } | null
 }
 
@@ -110,6 +111,7 @@ export default function AdminClientsTable({
   const [editPkgExpiry, setEditPkgExpiry] = useState('')
   const [savingPackage, setSavingPackage] = useState(false)
   const [selectedPackageId, setSelectedPackageId] = useState('')
+  const [assignPaymentMethod, setAssignPaymentMethod] = useState<'cash' | 'transfer'>('cash')
   const [assigningPackage, setAssigningPackage] = useState(false)
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [deletingPackageId, setDeletingPackageId] = useState<string | null>(null)
@@ -292,13 +294,14 @@ export default function AdminClientsTable({
     const res = await fetch(`/api/admin/clients/${managingClient.id}/assign-package`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packageId: selectedPackageId }),
+      body: JSON.stringify({ packageId: selectedPackageId, paymentMethod: assignPaymentMethod }),
     })
     const data = await res.json()
     if (res.ok) {
       updateClientInState({ id: managingClient.id, user_packages: [...managingClient.user_packages, data] })
       toast.success('Membresía asignada')
       setSelectedPackageId('')
+      setAssignPaymentMethod('cash')
       setShowAssignForm(false)
     } else {
       toast.error(data.error || 'Error al asignar membresía')
@@ -849,9 +852,23 @@ export default function AdminClientsTable({
                           </option>
                         ))}
                       </select>
-                      <p className="text-xs text-muted-foreground">Se activa hoy sin cargo.</p>
+                      <div>
+                        <label className="text-xs font-medium text-primary block mb-1">Método de pago</label>
+                        <div className="flex gap-1 bg-secondary rounded-lg p-1 w-fit">
+                          {(['cash', 'transfer'] as const).map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setAssignPaymentMethod(m)}
+                              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${assignPaymentMethod === m ? 'bg-white text-primary shadow-sm' : 'text-muted-foreground'}`}
+                            >
+                              {m === 'cash' ? '💵 Efectivo' : '🏦 Transferencia'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowAssignForm(false); setSelectedPackageId('') }}>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowAssignForm(false); setSelectedPackageId(''); setAssignPaymentMethod('cash') }}>
                           Cancelar
                         </Button>
                         <Button
@@ -1045,12 +1062,23 @@ export default function AdminClientsTable({
                             .map((up) => (
                               <div key={up.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border text-sm">
                                 <div>
-                                  <span className="font-medium text-primary">{up.package?.name_es ?? '—'}</span>
-                                  <span className="text-muted-foreground ml-2 text-xs">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-primary">{up.package?.name_es ?? '—'}</span>
+                                    {up.payment_method === 'cash' && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">💵 Efectivo</span>
+                                    )}
+                                    {up.payment_method === 'transfer' && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">🏦 Transferencia</span>
+                                    )}
+                                    {up.stripe_payment_intent_id && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">💳 Stripe</span>
+                                    )}
+                                  </div>
+                                  <span className="text-muted-foreground text-xs">
                                     {new Date(up.purchased_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                                   </span>
                                 </div>
-                                <span className="text-sm font-semibold text-primary">
+                                <span className="text-sm font-semibold text-primary shrink-0 ml-2">
                                   ${(up.package?.price_mxn ?? 0).toLocaleString('es-MX')}
                                 </span>
                               </div>

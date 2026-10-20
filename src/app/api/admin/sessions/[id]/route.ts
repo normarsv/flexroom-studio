@@ -37,7 +37,7 @@ export async function PATCH(
     return NextResponse.json({ session: data })
   }
 
-  const { date, start_time, duration_minutes, class_type, instructor_id, capacity, custom_title, is_special, event_title, event_description, event_type_label } = body
+  const { date, start_time, duration_minutes, class_type, instructor_id, capacity, custom_title, is_special, event_title, event_description, event_type_label, event_price_mxn, is_hidden } = body
 
   const { data, error } = await supabase
     .from('class_sessions')
@@ -48,6 +48,8 @@ export async function PATCH(
       event_title: is_special ? (event_title || null) : null,
       event_description: is_special ? (event_description || null) : null,
       event_type_label: is_special ? (event_type_label || null) : null,
+      event_price_mxn: is_special ? (event_price_mxn ?? null) : null,
+      is_hidden: is_special ? (is_hidden || false) : false,
     })
     .eq('id', id)
     .select()

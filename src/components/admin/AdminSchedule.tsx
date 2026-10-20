@@ -762,6 +762,9 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           {event.status === 'cancelled' && (
                             <Badge variant="destructive" className="text-xs">Cancelada</Badge>
                           )}
+                          {(event as any).is_hidden && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-300">🔒 Oculto</span>
+                          )}
                           {isPast && <span className="text-xs text-muted-foreground">Pasado</span>}
                         </div>
                         <p className="font-semibold text-primary leading-tight">
@@ -777,6 +780,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           {(event as any).instructor?.name && `${(event as any).instructor.name} · `}
                           {event.spots_booked}/{event.capacity} reservas
                           {spotsLeft <= 0 ? ' · Lleno' : spotsLeft <= 3 ? ` · ¡Solo ${spotsLeft} lugar${spotsLeft === 1 ? '' : 'es'}!` : ''}
+                          {(event as any).event_price_mxn != null && ` · $${(event as any).event_price_mxn} MXN`}
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">

@@ -88,7 +88,9 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
   const dbClassType = classTypes.find((ct) => ct.key === session.class_type)
   const classLabelText = (session as any).custom_title
     || (locale === 'es' ? (dbClassType?.name_es || classLabel?.es || session.class_type) : (dbClassType?.name_en || classLabel?.en || session.class_type))
-  const singlePrice = dbClassType?.price_mxn ?? SINGLE_SESSION_PRICES_MXN[session.class_type] ?? 0
+  const singlePrice = (session.is_special && session.event_price_mxn != null)
+    ? session.event_price_mxn
+    : (dbClassType?.price_mxn ?? SINGLE_SESSION_PRICES_MXN[session.class_type] ?? 0)
   const hasSinglePrice = singlePrice > 0
   const date = parseISO(session.date)
 

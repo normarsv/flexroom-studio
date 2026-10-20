@@ -16,7 +16,7 @@ export async function POST(
   const supabase = await createClient()
   if (!(await checkAdmin(supabase))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { packageId } = await request.json()
+  const { packageId, paymentMethod } = await request.json()
   if (!packageId) return NextResponse.json({ error: 'packageId requerido' }, { status: 400 })
 
   const { data: pkg, error: pkgError } = await supabase
@@ -39,6 +39,7 @@ export async function POST(
       expires_at: expiresAt.toISOString(),
       purchased_at: new Date().toISOString(),
       stripe_payment_intent_id: null,
+      payment_method: paymentMethod || null,
     })
     .select('*, package:packages(name_es)')
     .single()
