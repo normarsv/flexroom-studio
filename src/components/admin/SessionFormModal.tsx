@@ -65,13 +65,16 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-primary">
-          <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-bold text-primary mb-5">
-          {isNew ? 'Nueva clase' : 'Editar clase'}
-        </h2>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between p-6 pb-4 shrink-0 border-b border-border">
+          <h2 className="text-xl font-bold text-primary">
+            {isNew ? 'Nueva clase' : 'Editar clase'}
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-primary">
+            <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-6 pt-4">
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -281,6 +284,7 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
           </div>
           </>}
         </form>
+        </div>
       </div>
     </div>
   )
