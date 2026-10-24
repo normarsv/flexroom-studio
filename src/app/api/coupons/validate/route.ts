@@ -31,7 +31,13 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Check applies_to matches context
-  if (coupon.applies_to !== 'both' && coupon.applies_to !== context) {
+  // 'both' covers classes and packages (and events by extension)
+  // 'events' covers only event bookings
+  const contextMatches =
+    coupon.applies_to === 'both' ||
+    coupon.applies_to === context ||
+    (context === 'events' && coupon.applies_to === 'both')
+  if (!contextMatches) {
     return NextResponse.json({ valid: false, error: 'Este cupón no aplica para esta compra' })
   }
 

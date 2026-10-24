@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: couponCode,
-        context: 'classes',
+        context: session.is_special ? 'events' : 'classes',
         userId: user.id,
         classType: session.class_type,
       }),

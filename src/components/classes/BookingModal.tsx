@@ -128,7 +128,7 @@ export default function BookingModal({ session, locale, userId, userPackages, cr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponInput.trim(),
-          context: 'classes',
+          context: session.is_special ? 'events' : 'classes',
           userId,
           classType: session.class_type,
         }),

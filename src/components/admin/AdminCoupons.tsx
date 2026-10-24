@@ -30,6 +30,7 @@ const APPLIES_TO_LABELS: Record<string, string> = {
   both: 'Clases y paquetes',
   packages: 'Paquetes',
   classes: 'Clases',
+  events: 'Eventos',
 }
 
 interface CouponForm {
@@ -37,7 +38,7 @@ interface CouponForm {
   description: string
   discount_type: 'percentage' | 'fixed'
   discount_value: string
-  applies_to: 'packages' | 'classes' | 'both'
+  applies_to: 'packages' | 'classes' | 'both' | 'events'
   usage_limit: string
   per_user_limit: string
   allowed_class_types: string[]
@@ -389,6 +390,7 @@ export default function AdminCoupons({ coupons: initialCoupons }: Props) {
                   <option value="both">Clases y paquetes</option>
                   <option value="packages">Solo paquetes</option>
                   <option value="classes">Solo clases</option>
+                  <option value="events">Solo eventos</option>
                 </select>
               </div>
 
