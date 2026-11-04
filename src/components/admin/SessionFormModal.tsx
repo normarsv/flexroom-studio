@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,11 @@ interface Props {
 export default function SessionFormModal({ session, instructors, classTypes, locale, onClose, onSaved, defaultSpecial = false, isCoach = false }: Props) {
   const isNew = !session
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
   const [form, setForm] = useState({
     date: session?.date || '',
     start_time: session?.start_time?.slice(0, 5) || '',
