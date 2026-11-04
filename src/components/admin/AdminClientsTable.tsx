@@ -116,6 +116,9 @@ export default function AdminClientsTable({
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [deletingPackageId, setDeletingPackageId] = useState<string | null>(null)
 
+  // Waiver
+  const [waiverAcceptedAt, setWaiverAcceptedAt] = useState<string | null | undefined>(undefined)
+
   // Créditos tab
   const [grantCreditType, setGrantCreditType] = useState('')
   const [grantCreditQty, setGrantCreditQty] = useState('1')
@@ -202,6 +205,11 @@ export default function AdminClientsTable({
     setEditingCreditType(null)
     setEditingCreditCount('')
     setTempPassword('')
+    setWaiverAcceptedAt(undefined)
+    fetch(`/api/admin/clients/${client.id}/waiver`)
+      .then((r) => r.json())
+      .then((d) => setWaiverAcceptedAt(d.accepted_at ?? null))
+      .catch(() => setWaiverAcceptedAt(null))
   }
 
   function closeManage() {
@@ -697,6 +705,28 @@ export default function AdminClientsTable({
                   >
                     {savingEdit ? 'Guardando...' : 'Guardar cambios'}
                   </Button>
+
+                  {/* Carta responsiva */}
+                  <div className="border-t border-border pt-4">
+                    <p className="text-sm font-medium text-primary mb-1.5">Carta responsiva</p>
+                    {waiverAcceptedAt === undefined ? (
+                      <p className="text-xs text-muted-foreground">Cargando...</p>
+                    ) : waiverAcceptedAt ? (
+                      <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <span>✓ Aceptada el{' '}
+                          {new Date(waiverAcceptedAt).toLocaleString('es-MX', {
+                            timeZone: 'America/Mexico_City',
+                            day: 'numeric', month: 'long', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <span>⚠ Pendiente — aún no ha aceptado la carta responsiva</span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Temp password */}
                   <div className="border-t border-border pt-4 space-y-2">
