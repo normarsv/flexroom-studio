@@ -559,7 +559,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           || ((session as any).is_special ? (session as any).event_title : null)
                           || (session as any).instructor?.name}
                       </span>
-                      <span className="text-xs text-muted-foreground shrink-0">
+                      <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
                         {session.spots_booked} / {session.capacity} lugares
                       </span>
                       {session.status === 'cancelled' && (

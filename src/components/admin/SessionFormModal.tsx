@@ -74,7 +74,7 @@ export default function SessionFormModal({ session, instructors, classTypes, loc
             <FontAwesomeIcon icon={faXmark} className="w-5 h-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6 pt-4">
+        <div className="overflow-y-auto flex-1 p-6 pt-4 overscroll-contain">
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
