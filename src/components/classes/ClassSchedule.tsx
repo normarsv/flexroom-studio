@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClock, faUsers, faChevronRight, faCircleCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { Button } from '@/components/ui/button'
@@ -422,7 +423,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     {session.instructor && (
                       <div className="flex items-center gap-1.5 mt-1">
                         {session.instructor.photo_url && (
-                          <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                          <Image src={session.instructor.photo_url} alt={session.instructor.name} width={28} height={28} className="rounded-full object-cover shrink-0" />
                         )}
                         <p className="text-xs text-muted-foreground">{session.instructor.name}</p>
                       </div>

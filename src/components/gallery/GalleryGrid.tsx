@@ -37,6 +37,8 @@ export default function GalleryGrid({ images, locale }: Props) {
                 src={img.url}
                 alt={locale === 'es' ? img.alt_es : img.alt_en}
                 fill
+                sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                quality={75}
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </button>
@@ -61,6 +63,8 @@ export default function GalleryGrid({ images, locale }: Props) {
               src={lightbox.url}
               alt={locale === 'es' ? lightbox.alt_es : lightbox.alt_en}
               fill
+              sizes="(max-width: 768px) 100vw, 800px"
+              quality={85}
               className="object-contain"
               onClick={(e) => e.stopPropagation()}
             />
