@@ -585,7 +585,7 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           </Button>
                         ) : (
                           <>
-                            <Button variant="ghost" size="sm" onClick={() => openCancelModal(session)} disabled={loadingCancelSummary} title="Ver registrados / WhatsApp" className="text-green-600 hover:text-green-700">
+                            <Button variant="ghost" size="sm" onClick={() => openCancelModal(session)} disabled={loadingCancelSummary} title="Ver registrados / WhatsApp" className="text-green-600 hover:text-green-700 hidden sm:inline-flex">
                               <FontAwesomeIcon icon={faWhatsapp} className="w-3.5 h-3.5" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleUncancel(session)} className="text-muted-foreground hover:text-primary" title="Reactivar clase">
