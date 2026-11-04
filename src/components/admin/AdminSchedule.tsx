@@ -549,12 +549,12 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           ✨ {(session as any).event_type_label || 'Especial'}
                         </span>
                       ) : (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={badgeStyle}>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0" style={badgeStyle}>
                           {label.es}
                         </span>
                       )}
-                      <span className="text-sm font-medium text-primary">{session.start_time.slice(0, 5)}</span>
-                      <span className="text-sm text-muted-foreground truncate">
+                      <span className="text-sm font-medium text-primary shrink-0">{session.start_time.slice(0, 5)}</span>
+                      <span className="text-sm text-muted-foreground truncate min-w-0">
                         {(session as any).custom_title
                           || ((session as any).is_special ? (session as any).event_title : null)
                           || (session as any).instructor?.name}
@@ -563,14 +563,14 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                         {session.spots_booked} / {session.capacity} lugares
                       </span>
                       {session.status === 'cancelled' && (
-                        <Badge variant="destructive" className="text-xs">Cancelada</Badge>
+                        <Badge variant="destructive" className="text-xs shrink-0">Cancelada</Badge>
                       )}
                       {(waitlistCounts[session.id] ?? 0) > 0 && session.status !== 'cancelled' && (
                         <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300 shrink-0">
                           {waitlistCounts[session.id]} en espera
                         </span>
                       )}
-                      <div className="ml-auto flex gap-1">
+                      <div className="ml-auto flex gap-1 shrink-0">
                         {session.status !== 'cancelled' && (
                           <Button variant="ghost" size="sm" onClick={() => openAttendance(session)} title="Tomar lista">
                             <FontAwesomeIcon icon={faClipboardList} className="w-3.5 h-3.5" />
