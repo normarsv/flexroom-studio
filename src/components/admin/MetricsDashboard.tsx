@@ -347,54 +347,88 @@ export default function MetricsDashboard({
         </div>
       </div>
 
-      {/* ── Row 2: Retention ── */}
-      <div className="bg-white rounded-xl border border-border p-5 shadow-sm mb-8">
-        <h2 className="text-sm font-semibold text-primary mb-4">Retención de clientas</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {(
-            [
-              { key: 'returning' as const, value: returning, label: 'Regresaron\nvs. mes anterior', color: 'text-green-600', border: false },
-              { key: 'onlyThisMonth' as const, value: onlyThisMonth, label: 'Solo este mes\n(nuevas o de regreso)', color: 'text-primary', border: true },
-              { key: 'atRisk' as const, value: atRisk, label: 'En riesgo\n(no reservaron este mes)', color: 'text-orange-500', border: false },
-            ]
-          ).map(({ key, value, label, color, border }) => (
-            <div key={key} className={`text-center ${border ? 'border-x border-border' : ''}`}>
-              <button
-                onClick={() => setRetentionOpen(prev => prev === key ? null : key)}
-                className={`text-3xl font-bold ${color} hover:opacity-70 transition-opacity focus:outline-none`}
-                title="Ver detalle"
-              >
-                {value}
-              </button>
-              <p className="text-xs text-muted-foreground mt-1 leading-tight whitespace-pre-line">{label}</p>
+      {/* ── Row 2: Retention (70%) + Top 5 (30%) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-6 mb-8">
+
+        {/* Retention */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-primary mb-4">Retención de clientas</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {(
+              [
+                { key: 'returning' as const, value: returning, label: 'Regresaron\nvs. mes anterior', color: 'text-green-600', border: false },
+                { key: 'onlyThisMonth' as const, value: onlyThisMonth, label: 'Solo este mes\n(nuevas o de regreso)', color: 'text-primary', border: true },
+                { key: 'atRisk' as const, value: atRisk, label: 'En riesgo\n(no reservaron este mes)', color: 'text-orange-500', border: false },
+              ]
+            ).map(({ key, value, label, color, border }) => (
+              <div key={key} className={`text-center ${border ? 'border-x border-border' : ''}`}>
+                <button
+                  onClick={() => setRetentionOpen(prev => prev === key ? null : key)}
+                  className={`text-3xl font-bold ${color} hover:opacity-70 transition-opacity focus:outline-none`}
+                  title="Ver detalle"
+                >
+                  {value}
+                </button>
+                <p className="text-xs text-muted-foreground mt-1 leading-tight whitespace-pre-line">{label}</p>
+              </div>
+            ))}
+          </div>
+          {prevMonthUsers.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center mt-4">No hay datos del mes anterior para comparar</p>
+          )}
+          {retentionOpen && drilldownData[retentionOpen].length > 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                {retentionOpen === 'returning' && 'Clientas que regresaron'}
+                {retentionOpen === 'onlyThisMonth' && 'Clientas solo este mes'}
+                {retentionOpen === 'atRisk' && 'Clientas en riesgo'}
+              </p>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {drilldownData[retentionOpen].map((u, i) => (
+                  <div key={i} className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-primary font-medium truncate">{u.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{u.email}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+          {retentionOpen && drilldownData[retentionOpen].length === 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground text-center">Sin clientas en esta categoría</p>
+            </div>
+          )}
         </div>
-        {prevMonthUsers.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center mt-4">No hay datos del mes anterior para comparar</p>
-        )}
-        {retentionOpen && drilldownData[retentionOpen].length > 0 && (
-          <div className="mt-4 border-t border-border pt-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              {retentionOpen === 'returning' && 'Clientas que regresaron'}
-              {retentionOpen === 'onlyThisMonth' && 'Clientas solo este mes'}
-              {retentionOpen === 'atRisk' && 'Clientas en riesgo'}
-            </p>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {drilldownData[retentionOpen].map((u, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm text-primary font-medium truncate">{u.name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">{u.email}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {retentionOpen && drilldownData[retentionOpen].length === 0 && (
-          <div className="mt-4 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground text-center">Sin clientas en esta categoría</p>
-          </div>
-        )}
+
+        {/* Top 5 clients */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-primary mb-4">Top 5 clientas</h2>
+          {top5.length > 0 ? (
+            <table className="w-full text-sm">
+              <tbody>
+                {top5.map((client, i) => (
+                  <tr key={i} className="border-b border-border last:border-0">
+                    <td className="py-2.5 pr-3 w-5 text-muted-foreground font-medium text-xs">{i + 1}</td>
+                    <td className="py-2.5">
+                      <p className="font-semibold text-primary leading-tight text-sm">{client.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {CLASS_TYPE_LABELS[client.topType as ClassType]?.es || client.topType}
+                      </p>
+                    </td>
+                    <td className="py-2.5 pl-2 text-right">
+                      <span className="inline-block bg-[#F4EF71] text-primary text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {client.count}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-muted-foreground text-sm text-center py-8">Sin datos este mes</p>
+          )}
+        </div>
+
       </div>
 
       {/* ── Row 3: Class type table ── */}
@@ -442,35 +476,92 @@ export default function MetricsDashboard({
         )}
       </div>
 
-      {/* ── Row 4: Instructor table ── */}
-      <div className="bg-white rounded-xl border border-border p-5 shadow-sm mb-8">
-        <h2 className="text-sm font-semibold text-primary mb-4">Rendimiento por instructora</h2>
-        {instructorRows.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs font-semibold text-muted-foreground pb-2 pr-4">Instructora</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground pb-2 px-3">Clases</th>
-                  <th className="text-right text-xs font-semibold text-muted-foreground pb-2 px-3">Reservas</th>
-                  <th className="text-left text-xs font-semibold text-muted-foreground pb-2 pl-3">Ocupación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {instructorRows.map((row, i) => (
-                  <tr key={row.name} className={`${i > 0 ? 'border-t border-border' : ''}`}>
-                    <td className="py-2.5 pr-4 font-medium text-primary">{row.name}</td>
-                    <td className="py-2.5 px-3 text-right text-muted-foreground">{row.sesiones}</td>
-                    <td className="py-2.5 px-3 text-right font-semibold text-primary">{row.totalBooked}</td>
-                    <td className="py-2.5 pl-3"><OcupBar pct={row.ocupacion} /></td>
+      {/* ── Row 4: Instructor table (50%) + Heatmap (50%) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        {/* Instructor table */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-primary mb-4">Rendimiento por instructora</h2>
+          {instructorRows.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-xs font-semibold text-muted-foreground pb-2 pr-4">Instructora</th>
+                    <th className="text-right text-xs font-semibold text-muted-foreground pb-2 px-3">Clases</th>
+                    <th className="text-right text-xs font-semibold text-muted-foreground pb-2 px-3">Reservas</th>
+                    <th className="text-left text-xs font-semibold text-muted-foreground pb-2 pl-3">Ocupación</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {instructorRows.map((row, i) => (
+                    <tr key={row.name} className={`${i > 0 ? 'border-t border-border' : ''}`}>
+                      <td className="py-2.5 pr-4 font-medium text-primary">{row.name}</td>
+                      <td className="py-2.5 px-3 text-right text-muted-foreground">{row.sesiones}</td>
+                      <td className="py-2.5 px-3 text-right font-semibold text-primary">{row.totalBooked}</td>
+                      <td className="py-2.5 pl-3"><OcupBar pct={row.ocupacion} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm text-center py-8">Sin datos este mes</p>
+          )}
+        </div>
+
+        {/* Heatmap */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-primary mb-1">Mapa de calor</h2>
+          <p className="text-xs text-muted-foreground mb-4">Reservas por día y horario</p>
+          {sortedHours.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="border-collapse text-xs" style={{ minWidth: `${sortedHours.length * 56 + 48}px` }}>
+                <thead>
+                  <tr>
+                    <th className="w-10 pb-2" />
+                    {sortedHours.map(h => (
+                      <th key={h} className="pb-2 px-1 text-muted-foreground font-medium text-center w-14">
+                        {h}:00
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {DAY_LABELS.map((day, dayIdx) => (
+                    <tr key={day}>
+                      <td className="pr-2 py-1 font-medium text-muted-foreground text-right w-10">{day}</td>
+                      {sortedHours.map(h => {
+                        const count = heatmapData[dayIdx]?.[h] || 0
+                        const { bg, text } = heatColor(count, heatMax)
+                        return (
+                          <td key={h} className="px-1 py-1">
+                            <div
+                              className="w-12 h-9 rounded-md flex items-center justify-center font-semibold transition-colors"
+                              style={{ backgroundColor: bg, color: text }}
+                            >
+                              {count > 0 ? count : ''}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs text-muted-foreground">Menos</span>
+                {[{ bg: '#fefce5' }, { bg: '#F4EF71' }, { bg: '#d4c800' }].map((c, i) => (
+                  <div key={i} className="w-6 h-4 rounded" style={{ backgroundColor: c.bg }} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-muted-foreground text-sm text-center py-8">Sin datos este mes</p>
-        )}
+                <span className="text-xs text-muted-foreground">Más</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm text-center py-8">Sin datos este mes</p>
+          )}
+        </div>
+
       </div>
 
       {/* ── Row 5: Bar charts ── */}
@@ -506,86 +597,6 @@ export default function MetricsDashboard({
             <p className="text-muted-foreground text-sm text-center py-12">Sin datos</p>
           )}
         </div>
-      </div>
-
-      {/* ── Row 6: Heatmap (day × hour) ── */}
-      {sortedHours.length > 0 && (
-        <div className="bg-white rounded-xl border border-border p-5 shadow-sm mb-8">
-          <h2 className="text-sm font-semibold text-primary mb-1">Mapa de calor — día × horario</h2>
-          <p className="text-xs text-muted-foreground mb-4">Número de reservas por combinación de día y hora</p>
-          <div className="overflow-x-auto">
-            <table className="border-collapse text-xs" style={{ minWidth: `${sortedHours.length * 56 + 48}px` }}>
-              <thead>
-                <tr>
-                  <th className="w-10 pb-2" />
-                  {sortedHours.map(h => (
-                    <th key={h} className="pb-2 px-1 text-muted-foreground font-medium text-center w-14">
-                      {h}:00
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {DAY_LABELS.map((day, dayIdx) => (
-                  <tr key={day}>
-                    <td className="pr-2 py-1 font-medium text-muted-foreground text-right w-10">{day}</td>
-                    {sortedHours.map(h => {
-                      const count = heatmapData[dayIdx]?.[h] || 0
-                      const { bg, text } = heatColor(count, heatMax)
-                      return (
-                        <td key={h} className="px-1 py-1">
-                          <div
-                            className="w-12 h-9 rounded-md flex items-center justify-center font-semibold transition-colors"
-                            style={{ backgroundColor: bg, color: text }}
-                          >
-                            {count > 0 ? count : ''}
-                          </div>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {/* Legend */}
-            <div className="flex items-center gap-2 mt-3">
-              <span className="text-xs text-muted-foreground">Menos</span>
-              {[{ bg: '#fefce5' }, { bg: '#F4EF71' }, { bg: '#d4c800' }].map((c, i) => (
-                <div key={i} className="w-6 h-4 rounded" style={{ backgroundColor: c.bg }} />
-              ))}
-              <span className="text-xs text-muted-foreground">Más</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Row 7: Top 5 clients ── */}
-      <div className="bg-white rounded-xl border border-border p-5 shadow-sm mb-8">
-        <h2 className="text-sm font-semibold text-primary mb-4">Top 5 clientas</h2>
-        {top5.length > 0 ? (
-          <table className="w-full text-sm">
-            <tbody>
-              {top5.map((client, i) => (
-                <tr key={i} className="border-b border-border last:border-0">
-                  <td className="py-2.5 pr-3 w-6 text-muted-foreground font-medium">{i + 1}</td>
-                  <td className="py-2.5">
-                    <p className="font-semibold text-primary leading-tight">{client.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {CLASS_TYPE_LABELS[client.topType as ClassType]?.es || client.topType}
-                    </p>
-                  </td>
-                  <td className="py-2.5 pl-3 text-right">
-                    <span className="inline-block bg-[#F4EF71] text-primary text-xs font-bold px-2 py-0.5 rounded-full">
-                      {client.count} reservas
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-muted-foreground text-sm text-center py-8">Sin datos este mes</p>
-        )}
       </div>
     </div>
   )
