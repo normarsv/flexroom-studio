@@ -5,9 +5,9 @@ import { NextRequest, NextResponse } from 'next/server'
 async function getRole(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('is_admin, is_coach').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('is_admin, is_coach, full_name').eq('id', user.id).single()
   if (!profile) return null
-  return { isAdmin: profile.is_admin === true, isCoach: profile.is_coach === true }
+  return { isAdmin: profile.is_admin === true, isCoach: profile.is_coach === true, fullName: profile.full_name as string | null }
 }
 
 export async function PATCH(
@@ -29,7 +29,11 @@ export async function PATCH(
     if (!instructor_id) return NextResponse.json({ error: 'instructor_id requerido' }, { status: 400 })
     const { data, error } = await supabase
       .from('class_sessions')
-      .update({ instructor_id })
+      .update({
+        instructor_id,
+        instructor_changed_by_name: role.fullName,
+        instructor_changed_at: new Date().toISOString(),
+      })
       .eq('id', id)
       .select()
       .single()
@@ -38,6 +42,15 @@ export async function PATCH(
   }
 
   const { date, start_time, duration_minutes, class_type, instructor_id, capacity, custom_title, is_special, event_title, event_description, event_type_label, event_price_mxn, is_hidden } = body
+
+  // Track instructor change if the instructor is actually switching
+  let instructorChangeLog: { instructor_changed_by_name: string | null; instructor_changed_at: string } | Record<string, never> = {}
+  if (instructor_id) {
+    const { data: current } = await supabase.from('class_sessions').select('instructor_id').eq('id', id).single()
+    if (current && current.instructor_id !== instructor_id) {
+      instructorChangeLog = { instructor_changed_by_name: role.fullName, instructor_changed_at: new Date().toISOString() }
+    }
+  }
 
   const { data, error } = await supabase
     .from('class_sessions')
@@ -50,6 +63,7 @@ export async function PATCH(
       event_type_label: is_special ? (event_type_label || null) : null,
       event_price_mxn: is_special ? (event_price_mxn ?? null) : null,
       is_hidden: is_special ? (is_hidden || false) : false,
+      ...instructorChangeLog,
     })
     .eq('id', id)
     .select()

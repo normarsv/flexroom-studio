@@ -25,6 +25,19 @@ interface Props {
   waitlistCounts?: Record<string, number>
 }
 
+function formatTimeBeforeClass(cancelledAtStr: string, sessionDate: string, startTimeStr: string): string {
+  const classMs = new Date(`${sessionDate}T${startTimeStr.slice(0, 5)}:00-06:00`).getTime()
+  const cancelMs = new Date(cancelledAtStr).getTime()
+  const diffMs = classMs - cancelMs
+  if (diffMs <= 0) return 'después de iniciar'
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 60) return `${diffMins} min antes`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h antes`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays} día${diffDays !== 1 ? 's' : ''} antes`
+}
+
 function hexToRgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -559,6 +572,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                           || ((session as any).is_special ? (session as any).event_title : null)
                           || (session as any).instructor?.name}
                       </span>
+                      {session.instructor_changed_by_name && (
+                        <span className="text-xs italic text-muted-foreground/60 shrink-0 hidden sm:inline">
+                          ✎ {session.instructor_changed_by_name}
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
                         {session.spots_booked} / {session.capacity} lugares
                       </span>
@@ -1455,7 +1473,11 @@ export default function AdminSchedule({ sessions: initial, instructors, template
                             )}
                           </div>
                           {email && <p className="text-xs text-muted-foreground truncate">{email}</p>}
-                          {cancelledStr && <p className="text-xs text-muted-foreground">{cancelledStr}</p>}
+                          {cancelledStr && (
+                            <p className="text-xs text-muted-foreground">
+                              {cancelledStr}{b.cancelled_at && attendanceSession && ` · ${formatTimeBeforeClass(b.cancelled_at, attendanceSession.date, attendanceSession.start_time)}`}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )

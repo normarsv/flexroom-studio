@@ -62,6 +62,8 @@ export interface ClassSession {
   blocked_stations: number[]
   instructor_paid_at: string | null
   instructor_payment_notes: string | null
+  instructor_changed_by_name: string | null
+  instructor_changed_at: string | null
 }
 
 export interface InstructorRateOverride {
