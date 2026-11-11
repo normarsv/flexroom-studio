@@ -24,7 +24,6 @@ interface BookingEntry {
   created_at: string
   status: string
   attended: boolean | null
-  price_paid: number | null
   cancelled_at: string | null
   user_package_id: string | null
   session: { date: string; class_type: string; start_time: string } | null

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen, faRotateRight } from '@fortawesome/free-solid-svg-icons'
+import { faPlus, faPencil, faXmark, faRotateLeft, faEnvelope, faCheck, faTrash, faCalendarPlus, faClipboardList, faCircleCheck, faCircleXmark, faMinus, faLock, faLockOpen, faRotateRight, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +38,28 @@ function formatTimeBeforeClass(cancelledAtStr: string, sessionDate: string, star
   return `${diffDays} día${diffDays !== 1 ? 's' : ''} antes`
 }
 
+function getPastWeekDays(offset: number): string[] {
+  const today = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) + 'T00:00:00')
+  const dow = today.getDay() // 0=Sun
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d.toLocaleDateString('en-CA')
+  })
+}
+
+function getPastWeekLabel(offset: number): string {
+  const days = getPastWeekDays(offset)
+  const from = parseISO(days[0])
+  const to = parseISO(days[6])
+  if (from.getMonth() === to.getMonth() && from.getFullYear() === to.getFullYear()) {
+    return `${format(from, 'd')}–${format(to, 'd MMM yyyy', { locale: es })}`
+  }
+  return `${format(from, 'd MMM', { locale: es })} – ${format(to, 'd MMM yyyy', { locale: es })}`
+}
+
 function hexToRgba(hex: string, alpha: number) {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -56,13 +78,10 @@ export default function AdminSchedule({ sessions: initial, instructors, template
 
   // Past sessions state
   const todayMx = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
-  const defaultPastFrom = (() => {
-    const d = new Date(todayMx + 'T00:00:00')
-    d.setDate(d.getDate() - 7)
-    return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
-  })()
-  const [pastFrom, setPastFrom] = useState(defaultPastFrom)
-  const [pastTo, setPastTo] = useState(todayMx)
+  const [pastWeekOffset, setPastWeekOffset] = useState(-1)
+  const [pastMode, setPastMode] = useState<'week' | 'custom'>('week')
+  const [pastCustomFrom, setPastCustomFrom] = useState('')
+  const [pastCustomTo, setPastCustomTo] = useState(todayMx)
   const [pastSessions, setPastSessions] = useState<ClassSession[] | null>(null)
   const [loadingPast, setLoadingPast] = useState(false)
 
@@ -76,6 +95,15 @@ export default function AdminSchedule({ sessions: initial, instructors, template
     }
     setLoadingPast(false)
   }
+
+  // Auto-load past sessions when switching to the past tab or navigating weeks
+  useEffect(() => {
+    if (tab === 'past' && pastMode === 'week') {
+      const days = getPastWeekDays(pastWeekOffset)
+      loadPastSessions(days[0], days[6])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, pastWeekOffset, pastMode])
 
   // Helpers for dynamic class type display
   const getTypeLabel = (key: string) =>
@@ -623,119 +651,148 @@ export default function AdminSchedule({ sessions: initial, instructors, template
 
       {tab === 'past' && (
         <div className="space-y-4">
-          {/* Date range filter */}
-          <div className="flex flex-wrap items-end gap-3 bg-white rounded-xl border border-border p-4">
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Desde</label>
-              <input
-                type="date"
-                value={pastFrom}
-                max={pastTo}
-                onChange={(e) => setPastFrom(e.target.value)}
-                className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-primary block mb-1">Hasta</label>
-              <input
-                type="date"
-                value={pastTo}
-                max={todayMx}
-                onChange={(e) => setPastTo(e.target.value)}
-                className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <Button
-              onClick={() => loadPastSessions(pastFrom, pastTo)}
-              disabled={loadingPast || !pastFrom || !pastTo}
-              className="bg-primary text-primary-foreground"
-            >
-              {loadingPast ? 'Cargando...' : 'Buscar'}
-            </Button>
-            <div className="flex gap-2 ml-auto">
-              {[
-                { label: 'Semana anterior', days: 7 },
-                { label: '30 días', days: 30 },
-                { label: '90 días', days: 90 },
-              ].map(({ label, days }) => (
+          {/* Navigation bar */}
+          <div className="flex flex-wrap items-center gap-3 bg-white rounded-xl border border-border p-4">
+            {pastMode === 'week' ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPastWeekOffset(o => o - 1)}>
+                    <FontAwesomeIcon icon={faChevronLeft} className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-sm font-medium text-primary min-w-[200px] text-center capitalize">
+                    {getPastWeekLabel(pastWeekOffset)}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setPastWeekOffset(o => o + 1)} disabled={pastWeekOffset >= 0}>
+                    <FontAwesomeIcon icon={faChevronRight} className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
                 <button
-                  key={days}
-                  onClick={() => {
-                    const d = new Date(todayMx + 'T00:00:00')
-                    d.setDate(d.getDate() - days)
-                    const from = d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
-                    setPastFrom(from)
-                    setPastTo(todayMx)
-                    loadPastSessions(from, todayMx)
-                  }}
-                  className="px-3 py-2 text-xs rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors"
+                  onClick={() => { setPastMode('custom'); setPastSessions(null) }}
+                  className="ml-auto text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors"
                 >
-                  {label}
+                  Rango personalizado
                 </button>
-              ))}
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Desde</label>
+                    <input
+                      type="date"
+                      value={pastCustomFrom}
+                      max={pastCustomTo || todayMx}
+                      onChange={(e) => setPastCustomFrom(e.target.value)}
+                      className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-primary block mb-1">Hasta</label>
+                    <input
+                      type="date"
+                      value={pastCustomTo}
+                      max={todayMx}
+                      onChange={(e) => setPastCustomTo(e.target.value)}
+                      className="border border-border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <Button
+                    onClick={() => { if (pastCustomFrom && pastCustomTo) loadPastSessions(pastCustomFrom, pastCustomTo) }}
+                    disabled={loadingPast || !pastCustomFrom || !pastCustomTo}
+                    className="bg-primary text-primary-foreground"
+                  >
+                    {loadingPast ? 'Cargando...' : 'Buscar'}
+                  </Button>
+                </div>
+                <button
+                  onClick={() => { setPastMode('week'); setPastSessions(null) }}
+                  className="ml-auto text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors"
+                >
+                  Ver por semana
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Results */}
-          {pastSessions === null ? (
-            <div className="bg-white rounded-xl border border-border flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <p className="text-sm">Selecciona un rango y presiona Buscar</p>
-            </div>
-          ) : loadingPast ? (
+          {/* Grid */}
+          {loadingPast ? (
             <div className="bg-white rounded-xl border border-border flex items-center justify-center py-16">
               <p className="text-sm text-muted-foreground">Cargando...</p>
             </div>
-          ) : pastSessions.length === 0 ? (
+          ) : pastSessions === null ? (
             <div className="bg-white rounded-xl border border-border flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">No hay clases en este rango de fechas</p>
+              <p className="text-sm text-muted-foreground">Selecciona un rango y presiona Buscar</p>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(
-                pastSessions.reduce<Record<string, ClassSession[]>>((acc, s) => {
-                  if (!acc[s.date]) acc[s.date] = []
-                  acc[s.date].push(s)
-                  return acc
-                }, {})
-              )
-                .sort(([a], [b]) => b.localeCompare(a))
-                .map(([dateStr, daySessions]) => (
-                  <div key={dateStr}>
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 capitalize">
-                      {format(parseISO(dateStr), "EEEE d 'de' MMMM", { locale: es })}
-                    </h3>
-                    <div className="bg-white rounded-xl border border-border overflow-hidden">
-                      {daySessions.map((session, idx) => {
-                        const label = { es: getTypeLabel(session.class_type) }
-                        const badgeStyle = getTypeBadgeStyle(session.class_type)
-                        return (
-                          <div key={session.id} className={`flex items-center gap-3 px-4 py-3 ${idx > 0 ? 'border-t border-border' : ''} opacity-80`}>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={badgeStyle}>
-                              {label.es}
-                            </span>
-                            <span className="text-sm font-medium text-primary">{session.start_time.slice(0, 5)}</span>
-                            <span className="text-sm text-muted-foreground truncate">
-                              {(session as any).custom_title || (session as any).instructor?.name || ''}
-                            </span>
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {session.spots_booked} / {session.capacity} lugares
-                            </span>
-                            {session.status === 'cancelled' && (
-                              <Badge variant="destructive" className="text-xs">Cancelada</Badge>
-                            )}
-                            <div className="ml-auto flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => openAttendance(session)} title="Ver lista">
-                                <FontAwesomeIcon icon={faClipboardList} className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
+          ) : (() => {
+            const cols: string[] = pastMode === 'week'
+              ? getPastWeekDays(pastWeekOffset)
+              : (() => {
+                  const days: string[] = []
+                  const d = new Date(pastCustomFrom + 'T00:00:00')
+                  const end = new Date(pastCustomTo + 'T00:00:00')
+                  while (d <= end) {
+                    days.push(d.toLocaleDateString('en-CA'))
+                    d.setDate(d.getDate() + 1)
+                  }
+                  return days
+                })()
+            const colCount = cols.length
+            return (
+              <div className="overflow-x-auto rounded-xl border border-border bg-white">
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`, minWidth: `${Math.max(700, colCount * 110)}px` }}>
+                  {/* Day headers */}
+                  {cols.map((dateStr, i) => {
+                    const day = parseISO(dateStr)
+                    return (
+                      <div key={dateStr} className={`px-2 py-2.5 border-b border-border text-center ${i > 0 ? 'border-l' : ''}`}>
+                        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide capitalize">
+                          {format(day, 'EEE', { locale: es })}
+                        </p>
+                        <p className="text-xl font-bold mt-0.5 text-muted-foreground">{format(day, 'd')}</p>
+                        <p className="text-[10px] text-muted-foreground/60 capitalize">{format(day, 'MMM', { locale: es })}</p>
+                      </div>
+                    )
+                  })}
+                  {/* Session cells */}
+                  {cols.map((dateStr, i) => {
+                    const daySessions = pastSessions.filter(s => s.date === dateStr).sort((a, b) => a.start_time.localeCompare(b.start_time))
+                    return (
+                      <div key={dateStr} className={`p-1.5 min-h-[120px] ${i > 0 ? 'border-l border-border' : ''} bg-secondary/20`}>
+                        {daySessions.length === 0 ? (
+                          <p className="text-[10px] text-muted-foreground/30 text-center mt-4">—</p>
+                        ) : daySessions.map((session) => {
+                          const color = getTypeColor(session.class_type)
+                          const isCancelled = session.status === 'cancelled'
+                          return (
+                            <button
+                              key={session.id}
+                              onClick={() => openAttendance(session)}
+                              title={`${getTypeLabel(session.class_type)} · ${session.start_time.slice(0, 5)} · ${(session as any).instructor?.name || ''}`}
+                              className={`w-full text-left rounded-md p-1.5 mb-1 border text-xs transition-all cursor-pointer hover:shadow-md hover:scale-[1.02] ${isCancelled ? 'opacity-40 line-through' : ''}`}
+                              style={{
+                                background: hexToRgba(color, 0.15),
+                                borderColor: hexToRgba(color, 0.5),
+                                borderLeft: `3px solid ${hexToRgba(color, 0.9)}`,
+                              }}
+                            >
+                              <p className="font-bold text-primary leading-tight">{session.start_time.slice(0, 5)}</p>
+                              <p className="text-primary/70 truncate leading-tight mt-0.5">{getTypeLabel(session.class_type)}</p>
+                              {(session as any).instructor?.name && (
+                                <p className="text-primary/50 truncate leading-tight">{(session as any).instructor.name.split(' ')[0]}</p>
+                              )}
+                              <p className="text-primary/60 font-semibold leading-tight mt-0.5">
+                                {session.spots_booked}/{session.capacity}
+                              </p>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
