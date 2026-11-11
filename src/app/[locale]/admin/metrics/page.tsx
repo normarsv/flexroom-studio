@@ -51,7 +51,7 @@ export default async function MetricsPage({
     // All package sales this month (Stripe + cash + transfer)
     supabase
       .from('user_packages')
-      .select('id, package:packages(price_mxn)')
+      .select('id, payment_method, stripe_payment_intent_id, package:packages(name_es, price_mxn)')
       .gte('purchased_at', `${monthStart}T00:00:00`)
       .lte('purchased_at', `${monthEnd}T23:59:59`),
 
@@ -68,10 +68,10 @@ export default async function MetricsPage({
       .select('session:class_sessions(class_type, date)')
       .eq('status', 'waitlist'),
 
-    // Previous month confirmed bookings (user_ids for retention)
+    // Previous month confirmed bookings (with profiles for retention drill-down)
     supabase
       .from('bookings')
-      .select('user_id')
+      .select('user_id, profile:profiles(full_name, email)')
       .eq('status', 'confirmed')
       .gte('booked_at', `${prevMonthStart}T00:00:00`)
       .lte('booked_at', `${prevMonthEnd}T23:59:59`),
@@ -95,7 +95,16 @@ export default async function MetricsPage({
   const prevMonthRevenue = (prevAllPackageSalesRes.data || []).reduce(
     (sum: number, s: any) => sum + (s.package?.price_mxn || 0), 0
   )
-  const prevMonthBookingCount = (prevBookingUsersRes.data || []).length
+  // Deduplicate prev month users (one entry per unique user_id)
+  const prevMonthUsersMap = new Map<string, { full_name: string | null; email: string }>()
+  for (const b of prevBookingUsersRes.data || []) {
+    if (b.user_id && !prevMonthUsersMap.has(b.user_id)) {
+      const prof = Array.isArray(b.profile) ? b.profile[0] : b.profile
+      prevMonthUsersMap.set(b.user_id, { full_name: prof?.full_name ?? null, email: prof?.email ?? '' })
+    }
+  }
+  const prevMonthUsers = Array.from(prevMonthUsersMap.entries()).map(([id, profile]) => ({ id, ...profile }))
+  const prevMonthBookingCount = prevMonthUsers.length
 
   return (
     <MetricsDashboard
@@ -104,7 +113,7 @@ export default async function MetricsPage({
       allPackageSales={allPackageSalesRes.data || []}
       sessions={sessionsRes.data || []}
       waitlistBookings={waitlistRes.data || []}
-      prevMonthUserIds={(prevBookingUsersRes.data || []).map((b: any) => b.user_id).filter(Boolean)}
+      prevMonthUsers={prevMonthUsers}
       prevMonthRevenue={prevMonthRevenue}
       prevMonthBookingCount={prevMonthBookingCount}
       newClientsCount={newClientsCountRes.count || 0}

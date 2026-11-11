@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { ClassType } from '@/types'
+
+interface PrevMonthUser { id: string; full_name: string | null; email: string }
 
 interface Props {
   bookings: any[]
@@ -11,7 +14,7 @@ interface Props {
   allPackageSales: any[]
   sessions: any[]
   waitlistBookings: any[]
-  prevMonthUserIds: string[]
+  prevMonthUsers: PrevMonthUser[]
   prevMonthRevenue: number
   prevMonthBookingCount: number
   newClientsCount: number
@@ -38,7 +41,7 @@ export default function MetricsDashboard({
   allPackageSales,
   sessions,
   waitlistBookings,
-  prevMonthUserIds,
+  prevMonthUsers,
   prevMonthRevenue,
   prevMonthBookingCount,
   newClientsCount,
@@ -47,6 +50,8 @@ export default function MetricsDashboard({
   locale,
 }: Props) {
   const router = useRouter()
+  const [retentionOpen, setRetentionOpen] = useState<'returning' | 'onlyThisMonth' | 'atRisk' | null>(null)
+  const [revenueOpen, setRevenueOpen] = useState(false)
 
   // ── KPI computations ───────────────────────────────────────────────────────
 
@@ -55,6 +60,21 @@ export default function MetricsDashboard({
 
   const totalRevenue = allPackageSales.reduce((sum: number, s: any) => sum + (s.package?.price_mxn || 0), 0)
   const revenueDelta = totalRevenue - prevMonthRevenue
+
+  // Revenue breakdown by payment method
+  const revenueByMethod = allPackageSales.reduce<Record<string, number>>((acc, s) => {
+    const price = s.package?.price_mxn || 0
+    const method = s.stripe_payment_intent_id ? 'stripe'
+      : s.payment_method === 'cash' ? 'cash'
+      : s.payment_method === 'transfer' ? 'transfer'
+      : 'otro'
+    acc[method] = (acc[method] || 0) + price
+    return acc
+  }, {})
+  const methodLabels: Record<string, string> = { stripe: '💳 Stripe', cash: '💵 Efectivo', transfer: '🏦 Transferencia', otro: '📦 Otro' }
+  const revenueBreakdown = Object.entries(revenueByMethod)
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a)
 
   const cancelRate = bookingCount + cancelledCount > 0
     ? Math.round((cancelledCount / (bookingCount + cancelledCount)) * 100)
@@ -74,11 +94,37 @@ export default function MetricsDashboard({
 
   // ── Retention ──────────────────────────────────────────────────────────────
 
-  const prevSet = new Set(prevMonthUserIds)
-  const thisMonthUserIds = new Set(bookings.map((b: any) => b.user_id).filter(Boolean))
-  const returning = [...thisMonthUserIds].filter(id => prevSet.has(id)).length
-  const onlyThisMonth = [...thisMonthUserIds].filter(id => !prevSet.has(id)).length
-  const atRisk = [...prevSet].filter(id => !thisMonthUserIds.has(id)).length
+  const prevSet = new Set(prevMonthUsers.map(u => u.id))
+  const prevUserMap = new Map(prevMonthUsers.map(u => [u.id, u]))
+
+  // Build this-month unique users with names (deduplicated)
+  const thisMonthUserMap = new Map<string, { name: string; email: string }>()
+  for (const b of bookings) {
+    if (b.user_id && !thisMonthUserMap.has(b.user_id)) {
+      thisMonthUserMap.set(b.user_id, {
+        name: b.profile?.full_name || b.profile?.email || 'Sin nombre',
+        email: b.profile?.email || '',
+      })
+    }
+  }
+  const thisMonthUserIds = new Set(thisMonthUserMap.keys())
+
+  const returningIds = [...thisMonthUserIds].filter(id => prevSet.has(id))
+  const onlyThisMonthIds = [...thisMonthUserIds].filter(id => !prevSet.has(id))
+  const atRiskIds = [...prevSet].filter(id => !thisMonthUserIds.has(id))
+
+  const returning = returningIds.length
+  const onlyThisMonth = onlyThisMonthIds.length
+  const atRisk = atRiskIds.length
+
+  const drilldownData: Record<string, { name: string; email: string }[]> = {
+    returning: returningIds.map(id => thisMonthUserMap.get(id)!),
+    onlyThisMonth: onlyThisMonthIds.map(id => thisMonthUserMap.get(id)!),
+    atRisk: atRiskIds.map(id => {
+      const u = prevUserMap.get(id)
+      return { name: u?.full_name || u?.email || 'Sin nombre', email: u?.email || '' }
+    }),
+  }
 
   // ── Bar chart data ─────────────────────────────────────────────────────────
 
@@ -256,6 +302,24 @@ export default function MetricsDashboard({
           <span className="text-xs text-muted-foreground mb-2">Ingresos totales</span>
           <p className="text-2xl font-bold text-primary">${totalRevenue.toLocaleString('es-MX')}</p>
           <Delta delta={revenueDelta} prevValue={prevMonthRevenue} isCurrency />
+          {revenueBreakdown.length > 0 && (
+            <button
+              onClick={() => setRevenueOpen(o => !o)}
+              className="text-xs text-muted-foreground mt-2 underline underline-offset-2 text-left hover:text-primary transition-colors"
+            >
+              {revenueOpen ? 'Ocultar desglose' : 'Ver desglose'}
+            </button>
+          )}
+          {revenueOpen && (
+            <div className="mt-2 space-y-1 border-t border-border pt-2">
+              {revenueBreakdown.map(([method, amount]) => (
+                <div key={method} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">{methodLabels[method] || method}</span>
+                  <span className="text-xs font-semibold text-primary">${amount.toLocaleString('es-MX')}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-border p-4 shadow-sm flex flex-col">
@@ -287,21 +351,49 @@ export default function MetricsDashboard({
       <div className="bg-white rounded-xl border border-border p-5 shadow-sm mb-8">
         <h2 className="text-sm font-semibold text-primary mb-4">Retención de clientas</h2>
         <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-green-600">{returning}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-tight">Regresaron<br/>vs. mes anterior</p>
-          </div>
-          <div className="text-center border-x border-border">
-            <p className="text-3xl font-bold text-primary">{onlyThisMonth}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-tight">Solo este mes<br/>(nuevas o de regreso)</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-orange-500">{atRisk}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-tight">En riesgo<br/>(no reservaron este mes)</p>
-          </div>
+          {(
+            [
+              { key: 'returning' as const, value: returning, label: 'Regresaron\nvs. mes anterior', color: 'text-green-600', border: false },
+              { key: 'onlyThisMonth' as const, value: onlyThisMonth, label: 'Solo este mes\n(nuevas o de regreso)', color: 'text-primary', border: true },
+              { key: 'atRisk' as const, value: atRisk, label: 'En riesgo\n(no reservaron este mes)', color: 'text-orange-500', border: false },
+            ]
+          ).map(({ key, value, label, color, border }) => (
+            <div key={key} className={`text-center ${border ? 'border-x border-border' : ''}`}>
+              <button
+                onClick={() => setRetentionOpen(prev => prev === key ? null : key)}
+                className={`text-3xl font-bold ${color} hover:opacity-70 transition-opacity focus:outline-none`}
+                title="Ver detalle"
+              >
+                {value}
+              </button>
+              <p className="text-xs text-muted-foreground mt-1 leading-tight whitespace-pre-line">{label}</p>
+            </div>
+          ))}
         </div>
-        {prevMonthUserIds.length === 0 && (
+        {prevMonthUsers.length === 0 && (
           <p className="text-xs text-muted-foreground text-center mt-4">No hay datos del mes anterior para comparar</p>
+        )}
+        {retentionOpen && drilldownData[retentionOpen].length > 0 && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              {retentionOpen === 'returning' && 'Clientas que regresaron'}
+              {retentionOpen === 'onlyThisMonth' && 'Clientas solo este mes'}
+              {retentionOpen === 'atRisk' && 'Clientas en riesgo'}
+            </p>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {drilldownData[retentionOpen].map((u, i) => (
+                <div key={i} className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-primary font-medium truncate">{u.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">{u.email}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {retentionOpen && drilldownData[retentionOpen].length === 0 && (
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground text-center">Sin clientas en esta categoría</p>
+          </div>
         )}
       </div>
 
