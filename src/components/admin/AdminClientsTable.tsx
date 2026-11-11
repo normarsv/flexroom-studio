@@ -12,6 +12,8 @@ import {
   faTrash,
   faSliders,
   faCheck,
+  faChevronDown,
+  faChevronRight,
 } from '@fortawesome/free-solid-svg-icons'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
 import { Button } from '@/components/ui/button'
@@ -101,6 +103,7 @@ export default function AdminClientsTable({
   // Unified manage modal
   const [managingClient, setManagingClient] = useState<ClientRow | null>(null)
   const [manageTab, setManageTab] = useState<ManageTab>('datos')
+  const [historialSections, setHistorialSections] = useState({ upcoming: true, past: false, cancelled: false })
 
   // Datos tab
   const [editName, setEditName] = useState('')
@@ -1184,44 +1187,59 @@ export default function AdminClientsTable({
                         )
                       }
 
+                      const SectionHeader = ({ id, label, count }: { id: keyof typeof historialSections; label: string; count: number }) => (
+                        <button
+                          onClick={() => setHistorialSections(s => ({ ...s, [id]: !s[id] }))}
+                          className="w-full flex items-center justify-between gap-2 group"
+                        >
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {label} ({count})
+                          </p>
+                          <FontAwesomeIcon
+                            icon={historialSections[id] ? faChevronDown : faChevronRight}
+                            className="w-3 h-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors"
+                          />
+                        </button>
+                      )
+
                       return (
                         <>
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                              Próximas reservas ({upcoming.length})
-                            </p>
-                            {upcoming.length === 0 ? (
-                              <p className="text-sm text-muted-foreground italic">Sin reservas próximas</p>
-                            ) : (
-                              <div className="space-y-1.5">
-                                {upcoming.map((b, i) => <BookingRow key={i} booking={b} />)}
-                              </div>
+                          <div className="space-y-2">
+                            <SectionHeader id="upcoming" label="Próximas reservas" count={upcoming.length} />
+                            {historialSections.upcoming && (
+                              upcoming.length === 0 ? (
+                                <p className="text-sm text-muted-foreground italic">Sin reservas próximas</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {upcoming.map((b, i) => <BookingRow key={i} booking={b} />)}
+                                </div>
+                              )
                             )}
                           </div>
 
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                              Clases pasadas ({past.length})
-                            </p>
-                            {past.length === 0 ? (
-                              <p className="text-sm text-muted-foreground italic">Sin clases pasadas</p>
-                            ) : (
-                              <div className="space-y-1.5">
-                                {past.map((b, i) => <BookingRow key={i} booking={b} />)}
-                              </div>
+                          <div className="space-y-2">
+                            <SectionHeader id="past" label="Clases pasadas" count={past.length} />
+                            {historialSections.past && (
+                              past.length === 0 ? (
+                                <p className="text-sm text-muted-foreground italic">Sin clases pasadas</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {past.map((b, i) => <BookingRow key={i} booking={b} />)}
+                                </div>
+                              )
                             )}
                           </div>
 
-                          <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                              Cancelaciones ({cancelled.length})
-                            </p>
-                            {cancelled.length === 0 ? (
-                              <p className="text-sm text-muted-foreground italic">Sin cancelaciones</p>
-                            ) : (
-                              <div className="space-y-1.5">
-                                {cancelled.map((b, i) => <BookingRow key={i} booking={b} showCancelledAt />)}
-                              </div>
+                          <div className="space-y-2">
+                            <SectionHeader id="cancelled" label="Cancelaciones" count={cancelled.length} />
+                            {historialSections.cancelled && (
+                              cancelled.length === 0 ? (
+                                <p className="text-sm text-muted-foreground italic">Sin cancelaciones</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {cancelled.map((b, i) => <BookingRow key={i} booking={b} showCancelledAt />)}
+                                </div>
+                              )
                             )}
                           </div>
                         </>
