@@ -10,6 +10,26 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const MAX_DIMENSION = 1200
+const JPEG_QUALITY = 0.82
+
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const { width, height } = img
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(width * scale)
+      canvas.height = Math.round(height * scale)
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', JPEG_QUALITY)
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(file)
+  })
+}
 
 interface Props {
   images: GalleryImage[]
@@ -31,8 +51,16 @@ export default function AdminGallery({ images: initial, locale }: Props) {
     try {
       const supabase = createClient()
       for (const file of files) {
-        const ext = file.name.split('.').pop()
-        const path = `gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const path = `gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`
+
+        // Compress before upload — resize to max 1200px and convert to JPEG
+        let blob: Blob
+        try {
+          blob = await compressImage(file)
+        } catch {
+          lastError = `Error al comprimir ${file.name}`
+          continue
+        }
 
         // Get signed upload URL from server (uses service role, bypasses storage RLS)
         const urlRes = await fetch('/api/admin/gallery/upload-url', {
@@ -47,11 +75,11 @@ export default function AdminGallery({ images: initial, locale }: Props) {
         }
         const { signedUrl } = await urlRes.json()
 
-        // Upload directly to Supabase Storage via signed URL
+        // Upload compressed blob directly to Supabase Storage via signed URL
         const uploadRes = await fetch(signedUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': file.type },
-          body: file,
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: blob,
         })
         if (!uploadRes.ok) {
           lastError = `Error al subir ${file.name}`
@@ -111,7 +139,7 @@ export default function AdminGallery({ images: initial, locale }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {images.map((img) => (
             <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden group">
-              <Image src={img.url} alt={img.alt_es || 'Galería'} fill className="object-cover" />
+              <Image src={img.url} alt={img.alt_es || 'Galería'} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-cover" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <Button
                   variant="destructive"
