@@ -95,18 +95,19 @@ export async function POST(request: NextRequest) {
 
   // Logged-in user booking
   if (user) {
-    // Check if already booked
+    // Check if already booked — waitlist is OK (they're claiming the open spot)
     const { data: existing } = await supabase
       .from('bookings')
-      .select('id')
+      .select('id, status')
       .eq('user_id', user.id)
       .eq('session_id', sessionId)
       .neq('status', 'cancelled')
-      .single()
+      .maybeSingle()
 
-    if (existing) {
+    if (existing?.status === 'confirmed') {
       return NextResponse.json({ error: 'Ya tienes una reserva para esta clase' }, { status: 400 })
     }
+    const existingWaitlistId = existing?.status === 'waitlist' ? existing.id : null
 
     // Credit booking
     if (useCredit) {
@@ -158,6 +159,11 @@ export async function POST(request: NextRequest) {
 
       // Mark credit as used
       await supabase.from('credits').update({ used: true }).eq('id', credit.id)
+
+      // If they were on the waitlist, cancel that entry now that they've booked
+      if (existingWaitlistId) {
+        await adminClient.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', existingWaitlistId)
+      }
 
       const { data: prof } = await supabase.from('profiles').select('email, full_name').eq('id', user.id).single()
       if (prof) await sendBookingConfirmation({ to: prof.email, name: prof.full_name || prof.email, session }).catch(console.error)
@@ -217,11 +223,15 @@ export async function POST(request: NextRequest) {
 
     // Deduct session if using a package — must use adminClient, RLS blocks user updates on user_packages
     if (userPackage && userPackage.sessions_remaining !== null) {
-      const adminClient = createAdminClient()
       await adminClient
         .from('user_packages')
         .update({ sessions_remaining: userPackage.sessions_remaining - 1 })
         .eq('id', userPackageId)
+    }
+
+    // If they were on the waitlist, cancel that entry now that they've booked
+    if (existingWaitlistId) {
+      await adminClient.from('bookings').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', existingWaitlistId)
     }
 
     // Get user email

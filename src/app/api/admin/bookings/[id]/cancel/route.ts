@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendWaitlistSpotAvailable } from '@/lib/email'
 
 async function checkAdmin(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -57,33 +58,35 @@ export async function POST(
     }
   }
 
-  // Promote next person from waitlist, or release the spot
-  const { data: next } = await adminClient
+  // Always release the spot — no auto-promotion
+  await adminClient.rpc('release_session_spot', { p_session_id: booking.session_id })
+
+  // Notify everyone on the waitlist so they can race to book
+  const { data: waitlist } = await adminClient
     .from('bookings')
-    .select('id, user_id, user_package_id')
+    .select('user_id')
     .eq('session_id', booking.session_id)
     .eq('status', 'waitlist')
     .order('booked_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
 
-  if (next) {
-    await adminClient.from('bookings').update({ status: 'confirmed' }).eq('id', next.id)
-    if (next.user_package_id) {
-      const { data: up } = await adminClient
-        .from('user_packages')
-        .select('sessions_remaining')
-        .eq('id', next.user_package_id)
-        .single()
-      if (up && up.sessions_remaining !== null) {
-        await adminClient
-          .from('user_packages')
-          .update({ sessions_remaining: up.sessions_remaining - 1 })
-          .eq('id', next.user_package_id)
+  if (waitlist && waitlist.length > 0) {
+    const userIds = waitlist.map((w: any) => w.user_id).filter(Boolean)
+    const { data: profiles } = await adminClient
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds)
+
+    if (profiles) {
+      const othersTotal = profiles.length
+      for (const prof of profiles) {
+        sendWaitlistSpotAvailable({
+          to: prof.email,
+          name: prof.full_name || prof.email,
+          session: booking.session,
+          othersInWaitlist: othersTotal - 1,
+        }).catch(console.error)
       }
     }
-  } else {
-    await adminClient.rpc('release_session_spot', { p_session_id: booking.session_id })
   }
 
   const creditGranted = booking.status === 'confirmed' && booking.payment_status === 'paid'

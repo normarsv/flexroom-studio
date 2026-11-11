@@ -238,29 +238,41 @@ export async function sendSessionCancelledNotification({ to, name, session }: Bo
   if (e2) console.error('[email] sendSessionCancelledNotification failed:', e2, { to })
 }
 
-// ── Waitlist promotion ───────────────────────────────────────────────────────
+// ── Waitlist spot available notification ─────────────────────────────────────
 
-export async function sendWaitlistPromotion({ to, name, session }: BookingEmailParams) {
+export async function sendWaitlistSpotAvailable({
+  to,
+  name,
+  session,
+  othersInWaitlist,
+}: BookingEmailParams & { othersInWaitlist: number }) {
   const className = (session as any).event_title || CLASS_NAMES[session.class_type] || session.class_type
   const sessionDate = parseISO(`${session.date}T${session.start_time}`)
   const dateStr = format(sessionDate, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })
 
+  const othersText = othersInWaitlist === 0
+    ? 'Eres la única persona en lista de espera — ¡date prisa!'
+    : othersInWaitlist === 1
+      ? 'Hay <strong>1 persona más</strong> en lista de espera, así que reserva cuanto antes.'
+      : `Hay <strong>${othersInWaitlist} personas más</strong> en lista de espera, así que reserva cuanto antes.`
+
   const html = buildEmail({
-    heading: '¡Se liberó un lugar para ti!',
-    body: `<p style="color:#444;font-size:14px;margin:0 0 16px;">Hola <strong>${name}</strong>, ¡buenas noticias! Se liberó un lugar en:</p>
+    heading: '¡Se liberó un lugar!',
+    body: `<p style="color:#444;font-size:14px;margin:0 0 16px;">Hola <strong>${name}</strong>, se abrió un espacio en:</p>
            ${sessionDetails(session, className)}
-           <p style="color:#444;font-size:14px;margin:8px 0 0;">Tu reserva ya está confirmada. ¡Te esperamos!</p>`,
-    ctaLabel: 'Ver mis clases',
-    ctaUrl: 'https://www.flexroomstudio.com/es/account',
+           <p style="color:#444;font-size:14px;margin:16px 0 8px;">Entra a la app y reserva tu lugar antes de que alguien más lo tome. ${othersText}</p>
+           <p style="color:#888;font-size:12px;margin:12px 0 0;">El lugar se asigna a quien reserve primero — no está apartado para nadie.</p>`,
+    ctaLabel: 'Reservar ahora',
+    ctaUrl: 'https://www.flexroomstudio.com/es/classes',
   })
 
-  const { error: e3 } = await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: 'Flex Room Studio <reservas@flexroomstudio.com>',
     to,
     subject: `¡Lugar disponible! ${className} — ${dateStr}`,
     html,
   })
-  if (e3) console.error('[email] sendWaitlistPromotion failed:', e3, { to })
+  if (error) console.error('[email] sendWaitlistSpotAvailable failed:', error, { to })
 }
 
 // ── Package purchase confirmation ────────────────────────────────────────────
