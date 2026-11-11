@@ -142,7 +142,7 @@ function HomeContent({
           {/* Hero image — shown only when set from admin */}
           {heroImageUrl && (
             <div className="relative w-full max-w-xs lg:max-w-md shrink-0 aspect-square rounded-3xl overflow-hidden">
-              <Image src={heroImageUrl} alt="Flexroom Studio" fill className="object-cover" />
+              <Image src={heroImageUrl} alt="Flexroom Studio" fill sizes="(max-width: 1024px) 320px, 448px" className="object-cover" />
             </div>
           )}
         </div>
@@ -291,7 +291,7 @@ function HomeContent({
             /* Two-column layout when image is set */
             <div className="flex flex-col lg:flex-row items-center gap-12 text-center lg:text-left">
               <div className="relative w-full max-w-xs lg:max-w-sm shrink-0 aspect-[4/5] rounded-3xl overflow-hidden">
-                <Image src={aboutImageUrl} alt="Sobre flexroom" fill className="object-cover" />
+                <Image src={aboutImageUrl} alt="Sobre flexroom" fill sizes="(max-width: 1024px) 320px, 384px" className="object-cover" />
               </div>
               <div>
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground mb-6">

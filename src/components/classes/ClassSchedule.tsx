@@ -508,7 +508,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                   {session.instructor && (
                     <span className="flex items-center gap-1.5">
                       {session.instructor.photo_url && (
-                        <img src={session.instructor.photo_url} alt={session.instructor.name} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                        <Image src={session.instructor.photo_url} alt={session.instructor.name} width={28} height={28} className="rounded-full object-cover shrink-0" />
                       )}
                       <span className="text-sm text-muted-foreground">{session.instructor.name}</span>
                     </span>
