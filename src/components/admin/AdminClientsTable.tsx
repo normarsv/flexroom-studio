@@ -21,7 +21,7 @@ import { CLASS_TYPE_LABELS } from '@/lib/constants'
 import { ClassType } from '@/types'
 
 interface BookingEntry {
-  created_at: string
+  booked_at: string
   status: string
   attended: boolean | null
   cancelled_at: string | null
@@ -454,7 +454,7 @@ export default function AdminClientsTable({
     const headers = ['Nombre', 'Correo', 'Teléfono', 'Créditos', 'Total reservas', 'Última clase', 'Estado', 'Registro']
     const rows = clients.map((c) => {
       const lastB = c.bookings.length > 0
-        ? c.bookings.reduce((a, b) => a.created_at > b.created_at ? a : b)
+        ? c.bookings.reduce((a, b) => a.booked_at > b.booked_at ? a : b)
         : null
       const isActive = getClientStatus(c)
       return [
@@ -463,7 +463,7 @@ export default function AdminClientsTable({
         c.phone || '',
         c.credits?.length ?? 0,
         c.bookings.length,
-        lastB ? new Date(lastB.created_at).toLocaleDateString('es-MX') : '',
+        lastB ? new Date(lastB.booked_at).toLocaleDateString('es-MX') : '',
         getClientStatus(c) === 'activo' ? 'Activo' : getClientStatus(c) === 'nuevo' ? 'Nuevo' : getClientStatus(c) === 'prospecto' ? 'Prospecto' : 'Inactivo',
         new Date(c.created_at).toLocaleDateString('es-MX'),
       ]
@@ -1142,7 +1142,7 @@ export default function AdminClientsTable({
 
                       const cancelled = managingClient.bookings
                         .filter((b) => b.status === 'cancelled')
-                        .sort((a, b) => (b.cancelled_at || b.created_at).localeCompare(a.cancelled_at || a.created_at))
+                        .sort((a, b) => (b.cancelled_at || b.booked_at).localeCompare(a.cancelled_at || a.booked_at))
 
                       const BookingRow = ({ booking, showCancelledAt }: { booking: BookingEntry; showCancelledAt?: boolean }) => {
                         const session = booking.session
