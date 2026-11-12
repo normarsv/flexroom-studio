@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, parseISO } from 'date-fns'
 import { es, enUS } from 'date-fns/locale'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faClock, faUsers, faChevronRight, faCircleCheck, faXmark } from '@fortawesome/free-solid-svg-icons'
@@ -18,16 +18,9 @@ import RequestClassModal from './RequestClassModal'
 interface Props {
   sessions: ClassSession[]
   locale: string
-  userId: string | null
-  userPackages: UserPackage[]
-  bookedSessionIds: string[]
-  waitlistedSessionIds: string[]
-  bookingSuccess: boolean
-  credits: { id: string; class_type: string }[]
   takenStations: Record<string, number[]>
   stationMapUrl: string | null
   classTypes: ClassTypeConfig[]
-  hasAcceptedWaiver: boolean
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -37,7 +30,7 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-export default function ClassSchedule({ sessions, locale, userId, userPackages, bookedSessionIds, waitlistedSessionIds, bookingSuccess, credits, takenStations, stationMapUrl, classTypes, hasAcceptedWaiver }: Props) {
+export default function ClassSchedule({ sessions, locale, takenStations, stationMapUrl, classTypes }: Props) {
   const getTypeLabel = (key: string, loc: string) => {
     const ct = classTypes.find(c => c.key === key)
     if (ct) return loc === 'es' ? ct.name_es : ct.name_en
@@ -51,11 +44,35 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
   const t = useTranslations('classes')
   const dateLocale = locale === 'es' ? es : enUS
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // User-specific context — fetched client-side so the page can be cached
+  const [userContextLoading, setUserContextLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userPackages, setUserPackages] = useState<UserPackage[]>([])
+  const [credits, setCredits] = useState<{ id: string; class_type: string }[]>([])
+  const [hasAcceptedWaiver, setHasAcceptedWaiver] = useState(false)
+  const [localBookedIds, setLocalBookedIds] = useState<string[]>([])
+  const [localWaitlisted, setLocalWaitlisted] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/user/booking-context')
+      .then((r) => r.json())
+      .then((data) => {
+        setUserId(data.userId)
+        setUserPackages(data.userPackages || [])
+        setCredits(data.credits || [])
+        setHasAcceptedWaiver(data.hasAcceptedWaiver || false)
+        setLocalBookedIds(data.bookedSessionIds || [])
+        setLocalWaitlisted(data.waitlistedSessionIds || [])
+      })
+      .catch(() => {})
+      .finally(() => setUserContextLoading(false))
+  }, [])
+
   const [selectedSession, setSelectedSession] = useState<ClassSession | null>(null)
   const [showRequest, setShowRequest] = useState(false)
   const [joiningWaitlist, setJoiningWaitlist] = useState<string | null>(null)
-  const [localWaitlisted, setLocalWaitlisted] = useState<string[]>(waitlistedSessionIds)
-  const [localBookedIds, setLocalBookedIds] = useState<string[]>(bookedSessionIds)
 
   async function handleJoinWaitlist(session: ClassSession) {
     if (!userId) { setSelectedSession(session); return }
@@ -80,7 +97,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
     }
   }
   const [filterType, setFilterType] = useState<ClassType | 'all'>('all')
-  const [showSuccess, setShowSuccess] = useState(bookingSuccess)
+  const [showSuccess, setShowSuccess] = useState(() => searchParams.get('booking') === 'success')
   const stripRef = useRef<HTMLDivElement>(null)
 
   // Group sessions by date
@@ -119,6 +136,11 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
     ? format(selectedDateObj, 'PPPP', { locale: dateLocale })
     : ''
   const dayHeadingDisplay = dayHeading.charAt(0).toUpperCase() + dayHeading.slice(1)
+
+  // Skeleton shown on booking action buttons while user context is loading
+  const ButtonSkeleton = () => (
+    <div className="shrink-0 h-7 w-16 rounded-xl bg-muted animate-pulse" />
+  )
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -182,7 +204,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     )}
                   </div>
                   <div className="shrink-0">
-                    {(() => {
+                    {userContextLoading ? <ButtonSkeleton /> : (() => {
                       const isEventBooked = localBookedIds.includes(event.id)
                       const isEventWaitlisted = localWaitlisted.includes(event.id)
                       if (isEventBooked) return (
@@ -438,7 +460,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
                     )}
                   </div>
 
-                  {isBooked ? (
+                  {userContextLoading ? <ButtonSkeleton /> : isBooked ? (
                     <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4EF71]/60 border border-[#F4EF71]">
                       <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5 text-[#1E1E1E]" />
                       <span className="text-xs font-semibold text-[#1E1E1E]">
@@ -528,7 +550,7 @@ export default function ClassSchedule({ sessions, locale, userId, userPackages, 
               </div>
 
               {/* Book button */}
-              {isBooked ? (
+              {userContextLoading ? <ButtonSkeleton /> : isBooked ? (
                 <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F4EF71]/40 border border-[#F4EF71]">
                   <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5 text-[#1E1E1E]" />
                   <span className="text-xs font-semibold text-[#1E1E1E]">
