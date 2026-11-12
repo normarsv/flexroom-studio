@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { useTranslations } from 'next-intl'
 import GalleryGrid from '@/components/gallery/GalleryGrid'
 
+export const revalidate = 3600 // cache for 1 hour — gallery changes rarely
+
 export default async function GalleryPage({
   params,
 }: {

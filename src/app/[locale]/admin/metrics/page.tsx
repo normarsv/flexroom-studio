@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import MetricsDashboard from '@/components/admin/MetricsDashboard'
 
+export const revalidate = 300 // cache for 5 minutes — metrics show historical data
+
 export default async function MetricsPage({
   params,
   searchParams,

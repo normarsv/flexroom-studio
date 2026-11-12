@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { useTranslations } from 'next-intl'
 import CoachCard from '@/components/coaches/CoachCard'
 
+export const revalidate = 3600 // cache for 1 hour — instructor list rarely changes
+
 export default async function CoachesPage({
   params,
 }: {

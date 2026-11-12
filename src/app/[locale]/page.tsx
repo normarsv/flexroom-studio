@@ -1,3 +1,5 @@
+export const revalidate = 300 // cache for 5 minutes — homepage content changes rarely
+
 import { useTranslations } from 'next-intl'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
